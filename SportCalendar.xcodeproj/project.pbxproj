@@ -1,0 +1,323 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		213FAF8799A64E258AA5E557 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 361733B744394685ACA6C288 /* AppState.swift */; };
+		EE6499F6E463406EBB7699F4 /* SportCalendarApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 430B4DD5C17C4B33AC6D9B30 /* SportCalendarApp.swift */; };
+		F425EAF4F73344C9B53D0C3C /* APIConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C699CE0D58F4077B61A16A0 /* APIConfig.swift */; };
+		D9B97747F7F24C0196A995B9 /* BootstrapModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9B22D3ADB0D410382C37A9F /* BootstrapModels.swift */; };
+		9C20CC2EB7E34CE6B912F595 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD43C7A7FC80469A8272E678 /* APIClient.swift */; };
+		989CCAF64E0A404FBB2FAE75 /* APIError.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9854A3EC993494DBD04CAEF /* APIError.swift */; };
+		5A407C263FF0438886D1F4D7 /* BootstrapCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE64ECC236084A958407A267 /* BootstrapCache.swift */; };
+		F452833D9479413EB6199C39 /* KeychainTokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33FE50281E0244FB95D2BCAF /* KeychainTokenStore.swift */; };
+		116AC7021C1B491D8B79F12E /* AppRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 245AA0E4068E45FB958A0B7D /* AppRootView.swift */; };
+		B81D215E1C044506883A3498 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC8CB7C6538C4595984BCB97 /* AuthView.swift */; };
+		92AE2C9A9EDB42DF8B2B24A3 /* CalendarTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CBC0D7E70974991AA5F62C6 /* CalendarTabView.swift */; };
+		FBB22F77F72F4A70AC6B5278 /* CommunityTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5C872DA834C4A95922778A7 /* CommunityTabView.swift */; };
+		41429790D446415C822566A3 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3084B75FFCA84234B46AEB4B /* MainTabView.swift */; };
+		255FCFCCD2364273AC9DD3F1 /* NutritionTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38EADDFE3F9949108C06CE69 /* NutritionTabView.swift */; };
+		8F9523E2DD1C4F328DE384CF /* ProfileTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3F0EE245F624A66BEE06DD6 /* ProfileTabView.swift */; };
+		7F8E9D0C1B2A3948576F5E4D3 /* ProfileHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E5D4C3B2A190817263546576 /* ProfileHelpers.swift */; };
+		8A7B6C5D4E3F201918273645A5 /* TabChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B8C7D6E5F403120918273645B6 /* TabChrome.swift */; };
+		1C2D3E4F5061728394A5B6C7D8 /* TabExtrasModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D3E4F5061728394A5B6C7D8E9 /* TabExtrasModels.swift */; };
+		1B0D207F843D45B7A455B216 /* WordsGameTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3797AC52D4964B188805AB21 /* WordsGameTabView.swift */; };
+		B9E0A4E772DF4AEBB8E9F63A /* Config.plist in Resources */ = {isa = PBXBuildFile; fileRef = E1ABF72E73544103B5BB1B8F /* Config.plist */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		383E81414371430C941F530B /* SportCalendar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SportCalendar.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A145A2E7883A4B6D9DBE1AA4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		361733B744394685ACA6C288 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/AppState.swift; sourceTree = "<group>"; };
+		430B4DD5C17C4B33AC6D9B30 /* SportCalendarApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/SportCalendarApp.swift; sourceTree = "<group>"; };
+		5C699CE0D58F4077B61A16A0 /* APIConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config/APIConfig.swift; sourceTree = "<group>"; };
+		C9B22D3ADB0D410382C37A9F /* BootstrapModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/BootstrapModels.swift; sourceTree = "<group>"; };
+		CD43C7A7FC80469A8272E678 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/APIClient.swift; sourceTree = "<group>"; };
+		A9854A3EC993494DBD04CAEF /* APIError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/APIError.swift; sourceTree = "<group>"; };
+		FE64ECC236084A958407A267 /* BootstrapCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/BootstrapCache.swift; sourceTree = "<group>"; };
+		33FE50281E0244FB95D2BCAF /* KeychainTokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/KeychainTokenStore.swift; sourceTree = "<group>"; };
+		245AA0E4068E45FB958A0B7D /* AppRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/AppRootView.swift; sourceTree = "<group>"; };
+		DC8CB7C6538C4595984BCB97 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/AuthView.swift; sourceTree = "<group>"; };
+		5CBC0D7E70974991AA5F62C6 /* CalendarTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/CalendarTabView.swift; sourceTree = "<group>"; };
+		D5C872DA834C4A95922778A7 /* CommunityTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/CommunityTabView.swift; sourceTree = "<group>"; };
+		3084B75FFCA84234B46AEB4B /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/MainTabView.swift; sourceTree = "<group>"; };
+		38EADDFE3F9949108C06CE69 /* NutritionTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/NutritionTabView.swift; sourceTree = "<group>"; };
+		A3F0EE245F624A66BEE06DD6 /* ProfileTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/ProfileTabView.swift; sourceTree = "<group>"; };
+		6E5D4C3B2A190817263546576 /* ProfileHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/ProfileHelpers.swift; sourceTree = "<group>"; };
+		9B8C7D6E5F403120918273645B6 /* TabChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/TabChrome.swift; sourceTree = "<group>"; };
+		2D3E4F5061728394A5B6C7D8E9 /* TabExtrasModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/TabExtrasModels.swift; sourceTree = "<group>"; };
+		3797AC52D4964B188805AB21 /* WordsGameTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/WordsGameTabView.swift; sourceTree = "<group>"; };
+		E1ABF72E73544103B5BB1B8F /* Config.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Resources/Config.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		617668262C4E4920A33779F0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		2F363A4FB89C4899BA87DA02 = {
+			isa = PBXGroup;
+			children = (
+				B6281F22D4C34075ACD94C8A /* Sources */,
+				A145A2E7883A4B6D9DBE1AA4 /* Info.plist */,
+				17B8628195CC4467BCA56830 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		B6281F22D4C34075ACD94C8A /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				361733B744394685ACA6C288 /* AppState.swift */,
+				430B4DD5C17C4B33AC6D9B30 /* SportCalendarApp.swift */,
+				5C699CE0D58F4077B61A16A0 /* APIConfig.swift */,
+				C9B22D3ADB0D410382C37A9F /* BootstrapModels.swift */,
+				2D3E4F5061728394A5B6C7D8E9 /* TabExtrasModels.swift */,
+				CD43C7A7FC80469A8272E678 /* APIClient.swift */,
+				A9854A3EC993494DBD04CAEF /* APIError.swift */,
+				FE64ECC236084A958407A267 /* BootstrapCache.swift */,
+				33FE50281E0244FB95D2BCAF /* KeychainTokenStore.swift */,
+				245AA0E4068E45FB958A0B7D /* AppRootView.swift */,
+				DC8CB7C6538C4595984BCB97 /* AuthView.swift */,
+				5CBC0D7E70974991AA5F62C6 /* CalendarTabView.swift */,
+				D5C872DA834C4A95922778A7 /* CommunityTabView.swift */,
+				3084B75FFCA84234B46AEB4B /* MainTabView.swift */,
+				38EADDFE3F9949108C06CE69 /* NutritionTabView.swift */,
+				A3F0EE245F624A66BEE06DD6 /* ProfileTabView.swift */,
+				6E5D4C3B2A190817263546576 /* ProfileHelpers.swift */,
+				9B8C7D6E5F403120918273645B6 /* TabChrome.swift */,
+				3797AC52D4964B188805AB21 /* WordsGameTabView.swift */,
+				E1ABF72E73544103B5BB1B8F /* Config.plist */,
+			);
+			path = Sources/SportCalendar;
+			sourceTree = "<group>";
+		};
+		17B8628195CC4467BCA56830 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				383E81414371430C941F530B /* SportCalendar.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		20089CE9C981414E9DC682D1 /* SportCalendar */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6618D87E44C845C58C48E175 /* Build configuration list for PBXNativeTarget "SportCalendar" */;
+			buildPhases = (
+				651B943C80714A8AA10D1628 /* Sources */,
+				617668262C4E4920A33779F0 /* Frameworks */,
+				16DAD91590134BD3AE01F0DE /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SportCalendar;
+			productName = SportCalendar;
+			productReference = 383E81414371430C941F530B /* SportCalendar.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		95397F5921674637833D3A79 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					20089CE9C981414E9DC682D1 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = D90CDE2E77434A60A9D497B7 /* Build configuration list for PBXProject "SportCalendar" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 2F363A4FB89C4899BA87DA02;
+			packageReferences = (
+			);
+			productRefGroup = 17B8628195CC4467BCA56830 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				20089CE9C981414E9DC682D1 /* SportCalendar */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		16DAD91590134BD3AE01F0DE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B9E0A4E772DF4AEBB8E9F63A /* Config.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		651B943C80714A8AA10D1628 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				213FAF8799A64E258AA5E557 /* AppState.swift in Sources */,
+				EE6499F6E463406EBB7699F4 /* SportCalendarApp.swift in Sources */,
+				F425EAF4F73344C9B53D0C3C /* APIConfig.swift in Sources */,
+				D9B97747F7F24C0196A995B9 /* BootstrapModels.swift in Sources */,
+				1C2D3E4F5061728394A5B6C7D8 /* TabExtrasModels.swift in Sources */,
+				9C20CC2EB7E34CE6B912F595 /* APIClient.swift in Sources */,
+				989CCAF64E0A404FBB2FAE75 /* APIError.swift in Sources */,
+				5A407C263FF0438886D1F4D7 /* BootstrapCache.swift in Sources */,
+				F452833D9479413EB6199C39 /* KeychainTokenStore.swift in Sources */,
+				116AC7021C1B491D8B79F12E /* AppRootView.swift in Sources */,
+				B81D215E1C044506883A3498 /* AuthView.swift in Sources */,
+				92AE2C9A9EDB42DF8B2B24A3 /* CalendarTabView.swift in Sources */,
+				FBB22F77F72F4A70AC6B5278 /* CommunityTabView.swift in Sources */,
+				41429790D446415C822566A3 /* MainTabView.swift in Sources */,
+				255FCFCCD2364273AC9DD3F1 /* NutritionTabView.swift in Sources */,
+				8F9523E2DD1C4F328DE384CF /* ProfileTabView.swift in Sources */,
+				7F8E9D0C1B2A3948576F5E4D3 /* ProfileHelpers.swift in Sources */,
+				8A7B6C5D4E3F201918273645A5 /* TabChrome.swift in Sources */,
+				1B0D207F843D45B7A455B216 /* WordsGameTabView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		25C3DE3A3EDD4449BA62FEA7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("DEBUG=1", "$(inherited)",);
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		5EC7BAFE2FEB45F6B128C5E3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		3C8436DEC1CF408CBDF08725 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sportcalendar.SportCalendar;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		6CFEE6A633D94F918D866375 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sportcalendar.SportCalendar;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		D90CDE2E77434A60A9D497B7 /* Build configuration list for PBXProject "SportCalendar" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				25C3DE3A3EDD4449BA62FEA7 /* Debug */,
+				5EC7BAFE2FEB45F6B128C5E3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		6618D87E44C845C58C48E175 /* Build configuration list for PBXNativeTarget "SportCalendar" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3C8436DEC1CF408CBDF08725 /* Debug */,
+				6CFEE6A633D94F918D866375 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 95397F5921674637833D3A79 /* Project object */;
+}

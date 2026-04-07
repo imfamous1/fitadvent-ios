@@ -1,0 +1,920 @@
+import PhotosUI
+import SwiftUI
+
+struct ProfileTabView: View {
+    @EnvironmentObject private var appState: AppState
+
+    @State private var activeSheet: ProfileSheet?
+    @State private var photoPickerItem: PhotosPickerItem?
+    @State private var avatarUploadError: String?
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    profileHead
+                    profileHero
+                    statsRow
+                    editProfileButton
+                    exercisesBlock
+                    logoutBlock
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 28)
+            }
+            .scrollIndicators(.hidden)
+            .background(Color(uiColor: .systemGroupedBackground))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .navigationBar)
+            .sheet(item: $activeSheet) { sheet in
+                sheetView(sheet)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
+            .onChange(of: photoPickerItem) { _, new in
+                Task { await uploadAvatarIfNeeded(item: new) }
+            }
+            .refreshable { await appState.refreshBootstrap() }
+        }
+    }
+
+    // MARK: - Head (как view-head на вебе)
+
+    private var profileHead: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Профиль")
+                    .font(.system(size: 28, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Color.primary)
+                    .tracking(-0.5)
+                Text("Твой прогресс и данные профиля")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+            Button {
+                activeSheet = .settings
+            } label: {
+                Image(systemName: "gearshape.fill")
+                    .font(.title3)
+                    .foregroundStyle(Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Настройки")
+        }
+        .padding(.top, 8)
+        .padding(.bottom, 20)
+    }
+
+    // MARK: - Hero
+
+    @ViewBuilder
+    private var profileHero: some View {
+        if let b = appState.bootstrap {
+            let p = b.user.profile
+            let vip = vipActive(p)
+            VStack(spacing: 16) {
+                avatarBlock(profile: p, vip: vip)
+                VStack(spacing: 8) {
+                    Text((p.displayName?.isEmpty == false ? p.displayName : nil) ?? b.user.login)
+                        .font(.system(size: 22, weight: .heavy, design: .rounded))
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.primary)
+                    HStack(spacing: 6) {
+                        Image(systemName: "lock.fill")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(b.user.login)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    metaChips(profile: p, vip: vip)
+                }
+                .frame(maxWidth: 320)
+                if let avatarUploadError {
+                    Text(avatarUploadError)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .multilineTextAlignment(.center)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.bottom, 20)
+        } else {
+            ContentUnavailableView(
+                "Нет данных",
+                systemImage: "icloud.slash",
+                description: Text("Потяните для обновления после входа.")
+            )
+            .padding(.vertical, 24)
+        }
+    }
+
+    private func avatarBlock(profile: UserProfile, vip: Bool) -> some View {
+        ZStack(alignment: .bottomTrailing) {
+            Group {
+                if let urlStr = profile.avatarUrl, let u = URL(string: urlStr) {
+                    AsyncImage(url: u) { phase in
+                        switch phase {
+                        case .success(let img):
+                            img
+                                .resizable()
+                                .scaledToFill()
+                        case .failure:
+                            avatarPlaceholder
+                        case .empty:
+                            ProgressView()
+                        @unknown default:
+                            avatarPlaceholder
+                        }
+                    }
+                } else {
+                    avatarPlaceholder
+                }
+            }
+            .frame(width: 96, height: 96)
+            .clipShape(Circle())
+            .overlay(
+                Circle()
+                    .stroke(Color(uiColor: .secondarySystemGroupedBackground), lineWidth: vip ? 0 : 3)
+            )
+            .background {
+                if vip {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.45, green: 0.35, blue: 0.85),
+                                    Color(red: 0.25, green: 0.55, blue: 0.75),
+                                    Color(red: 0.35, green: 0.45, blue: 0.65),
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 102, height: 102)
+                }
+            }
+            PhotosPicker(selection: $photoPickerItem, matching: .images) {
+                Image(systemName: "camera.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 36, height: 36)
+                    .background(
+                        Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue),
+                        in: Circle()
+                    )
+                    .shadow(color: Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue).opacity(0.45), radius: 6, y: 2)
+            }
+            .buttonStyle(.plain)
+            .offset(x: 4, y: 4)
+            .accessibilityLabel("Загрузить фото")
+        }
+    }
+
+    private var avatarPlaceholder: some View {
+        ZStack {
+            Circle().fill(Color(uiColor: .tertiarySystemGroupedBackground))
+            Image(systemName: "person.fill")
+                .font(.system(size: 40))
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private func metaChips(profile: UserProfile, vip: Bool) -> some View {
+        let athlete = formatAthleteSince(profile.registeredAt)
+        let vipDate = formatVipUntilDisplay(profile.vipUntil)
+        let tgName = profile.telegramUsername?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let showTg = (tgName != nil && !(tgName?.isEmpty ?? true)) || profile.telegramUserId != nil
+
+        let hasAny = !athlete.isEmpty || (vip && !vipDate.isEmpty) || showTg
+        if hasAny {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 8)], alignment: .center, spacing: 8) {
+                if !athlete.isEmpty {
+                    metaChip(athlete, style: .athlete)
+                }
+                if vip, !vipDate.isEmpty {
+                    metaChip("Премиум до \(vipDate)", style: .vip)
+                }
+                if showTg {
+                    let tgText: String = {
+                        if let u = tgName, !u.isEmpty { return "@\(u)" }
+                        if let id = profile.telegramUserId { return String(id) }
+                        return ""
+                    }()
+                    HStack(spacing: 2) {
+                        Text("tg:")
+                            .fontWeight(.heavy)
+                        Text(tgText)
+                    }
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(chipBackground(.telegram))
+                    .clipShape(Capsule())
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private enum ChipStyle { case athlete, vip, telegram }
+
+    private func metaChip(_ text: String, style: ChipStyle) -> some View {
+        Text(text)
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 9)
+            .padding(.vertical, 4)
+            .background(chipBackground(style))
+            .clipShape(Capsule())
+    }
+
+    private func chipBackground(_ style: ChipStyle) -> Color {
+        switch style {
+        case .athlete:
+            return Color(red: ProfileChrome.chipAthlete.red, green: ProfileChrome.chipAthlete.green, blue: ProfileChrome.chipAthlete.blue).opacity(0.12)
+        case .vip:
+            return Color(red: ProfileChrome.chipVip.red, green: ProfileChrome.chipVip.green, blue: ProfileChrome.chipVip.blue).opacity(0.14)
+        case .telegram:
+            return Color(red: ProfileChrome.chipTelegram.red, green: ProfileChrome.chipTelegram.green, blue: ProfileChrome.chipTelegram.blue).opacity(0.12)
+        }
+    }
+
+    // MARK: - Стат-пиллы
+
+    private var statsRow: some View {
+        let b = appState.bootstrap
+        let progress = b?.progress ?? [:]
+        let total = b.map { totalWorkoutDays(progress: $0.progress) } ?? 0
+        let g = b?.gamification
+        let level = g?.level ?? 1
+        let bmi = g?.bmi
+        return LazyVGrid(
+            columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())],
+            spacing: 8
+        ) {
+            statPillButton(title: "Статистика", systemImage: "chart.bar.fill", badge: nil) {
+                activeSheet = .stats(total: total, months: workoutStatsByMonth(progress: progress))
+            }
+            if let bmi, bmi.isFinite {
+                statPillButton(title: "Здоровье", systemImage: "scalemass", badge: nil) {
+                    activeSheet = .health
+                }
+            } else {
+                statPillStatic(title: "Здоровье", systemImage: "scalemass")
+            }
+            statPillButton(title: "Уровень \(level)", systemImage: "star.fill", badge: nil) {
+                activeSheet = .level
+            }
+            statPillButton(title: "Трофеи", systemImage: "trophy.fill", badge: nil) {
+                activeSheet = .trophies
+            }
+        }
+        .padding(.bottom, 14)
+    }
+
+    private func statPillButton(title: String, systemImage: String, badge: Int?, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            ZStack(alignment: .topTrailing) {
+                VStack(spacing: 6) {
+                    Image(systemName: systemImage)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Color(red: ProfileChrome.accentBlue.red, green: ProfileChrome.accentBlue.green, blue: ProfileChrome.accentBlue.blue))
+                    Text(title)
+                        .font(.system(size: 11, weight: .semibold))
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(Color(red: ProfileChrome.accentBlue.red, green: ProfileChrome.accentBlue.green, blue: ProfileChrome.accentBlue.blue))
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.85)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .padding(.horizontal, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color(uiColor: .secondarySystemGroupedBackground))
+                )
+                if let badge, badge > 0 {
+                    Text(badge > 99 ? "99+" : String(badge))
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(Color.red.opacity(0.92)))
+                        .offset(x: 4, y: -6)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func statPillStatic(title: String, systemImage: String) -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: systemImage)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.secondary)
+            Text(title)
+                .font(.system(size: 11, weight: .semibold))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(uiColor: .tertiarySystemGroupedBackground))
+        )
+    }
+
+    // MARK: - Редактировать и упражнения
+
+    private var editProfileButton: some View {
+        Button {
+            activeSheet = .edit
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "square.and.pencil")
+                    .font(.body.weight(.semibold))
+                Text("Редактировать анкету")
+                    .font(.body.weight(.semibold))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue))
+            )
+            .foregroundStyle(.white)
+        }
+        .buttonStyle(.plain)
+        .padding(.bottom, 22)
+    }
+
+    private var exercisesBlock: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Упражнения")
+                .font(.title3.weight(.bold))
+            Text("Настрой свой план на месяц")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            VStack(spacing: 0) {
+                exerciseRow(icon: "calendar", title: "Текущий", trailing: "FitAdvent") {
+                    activeSheet = .exerciseHint("Текущий месяц")
+                }
+                Divider().padding(.leading, 48)
+                if isProgramVoteBannerDayNow() {
+                    exerciseRow(icon: "calendar.badge.clock", title: "Следующий", trailing: nil) {
+                        let t = programVoteNextMonthTarget()
+                        activeSheet = .exerciseHint("Программа на \(t.month).\(t.year) — скоро здесь же, что и на сайте.")
+                    }
+                    Divider().padding(.leading, 48)
+                }
+                exerciseRow(
+                    icon: "person.fill",
+                    title: "Индивидуальный",
+                    trailing: nil,
+                    showPremium: !(appState.bootstrap.map { vipActive($0.user.profile) } ?? false)
+                ) {
+                    let isVip = appState.bootstrap.map { vipActive($0.user.profile) } ?? false
+                    if isVip {
+                        activeSheet = .exerciseHint("Индивидуальная программа на месяц — полный сценарий как на сайте появится в следующих версиях.")
+                    } else {
+                        activeSheet = .exerciseHint("Доступно по подписке Премиум.")
+                    }
+                }
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color(uiColor: .secondarySystemGroupedBackground))
+            )
+        }
+        .padding(.bottom, 24)
+    }
+
+    private func exerciseRow(
+        icon: String,
+        title: String,
+        trailing: String?,
+        showPremium: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.title3)
+                    .foregroundStyle(Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue))
+                    .frame(width: 28)
+                Text(title)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.primary)
+                Spacer()
+                if let trailing {
+                    Text(trailing)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                if showPremium {
+                    Text("P")
+                        .font(.caption2.weight(.black))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(Color.orange.opacity(0.9)))
+                }
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(14)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var logoutBlock: some View {
+        Button(role: .destructive) {
+            Task { await appState.logout() }
+        } label: {
+            Text("Выйти")
+                .font(.body.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(Color.red.opacity(0.35), lineWidth: 1)
+                )
+        }
+        .padding(.bottom, 8)
+    }
+
+    // MARK: - Sheets
+
+    @ViewBuilder
+    private func sheetView(_ sheet: ProfileSheet) -> some View {
+        switch sheet {
+        case .settings:
+            ProfileSettingsSheet()
+        case .stats(let total, let months):
+            ProfileStatsSheet(total: total, months: months)
+        case .health:
+            ProfileHealthSheet(
+                profile: appState.bootstrap?.user.profile,
+                gamification: appState.bootstrap?.gamification,
+                onPickKcal: { kcal in await applyKcalGoal(kcal) }
+            )
+        case .level:
+            ProfileLevelSheet(g: appState.bootstrap?.gamification)
+        case .trophies:
+            ProfileTrophiesSheet(achievements: appState.bootstrap.map { $0.gamification.achievements ?? [] } ?? [])
+        case .edit:
+            ProfileEditSheet()
+        case .exerciseHint(let t):
+            ProfileHintSheet(text: t)
+        }
+    }
+
+    private func uploadAvatarIfNeeded(item: PhotosPickerItem?) async {
+        guard let item else { return }
+        avatarUploadError = nil
+        do {
+            guard let data = try await item.loadTransferable(type: Data.self) else {
+                avatarUploadError = "Не удалось прочитать файл"
+                return
+            }
+            _ = try await APIClient.shared.uploadAvatar(imageData: data)
+            photoPickerItem = nil
+            await appState.refreshBootstrap()
+        } catch let e as APIClientError {
+            avatarUploadError = e.message
+        } catch {
+            avatarUploadError = error.localizedDescription
+        }
+    }
+
+    private func applyKcalGoal(_ kcal: Int) async {
+        guard let p = appState.bootstrap?.user.profile else { return }
+        do {
+            try await APIClient.shared.patchMe(ProfilePatchBody(
+                displayName: p.displayName,
+                heightCm: p.heightCm,
+                weightKg: p.weightKg,
+                ageYears: p.ageYears,
+                sex: p.sex,
+                shareBodyStats: p.shareBodyStats,
+                shareProofsLarge: p.shareProofsLarge,
+                showInCommunityList: p.showInCommunityList,
+                dailyKcalGoal: kcal
+            ))
+            await appState.refreshBootstrap()
+        } catch {}
+    }
+}
+
+// MARK: - Sheet types
+
+enum ProfileSheet: Identifiable {
+    case settings
+    case stats(total: Int, months: [WorkoutMonthStat])
+    case health
+    case level
+    case trophies
+    case edit
+    case exerciseHint(String)
+
+    var id: String {
+        switch self {
+        case .settings: return "settings"
+        case .stats: return "stats"
+        case .health: return "health"
+        case .level: return "level"
+        case .trophies: return "trophies"
+        case .edit: return "edit"
+        case .exerciseHint(let s): return "hint-\(s.prefix(32))"
+        }
+    }
+}
+
+// MARK: - Вложенные листы
+
+private struct ProfileSettingsSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Label("Уведомления", systemImage: "bell.fill")
+                    Label("Тема оформления", systemImage: "paintpalette.fill")
+                    Label("Аккаунт и безопасность", systemImage: "lock.shield.fill")
+                } footer: {
+                    Text("Раздел в разработке — настройки будут как на сайте.")
+                }
+            }
+            .navigationTitle("Настройки")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Закрыть") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+private struct ProfileStatsSheet: View {
+    var total: Int
+    var months: [WorkoutMonthStat]
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    HStack {
+                        Text("Всего тренировок")
+                        Spacer()
+                        Text("\(total)")
+                            .fontWeight(.semibold)
+                            .foregroundStyle(Color(red: ProfileChrome.accentBlue.red, green: ProfileChrome.accentBlue.green, blue: ProfileChrome.accentBlue.blue))
+                    }
+                } header: {
+                    Text("Сводка")
+                }
+                if months.isEmpty {
+                    Section {
+                        Text("Пока нет отмеченных дней в календарях.")
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    Section("По месяцам") {
+                        ForEach(months) { row in
+                            HStack {
+                                Text(row.label)
+                                Spacer()
+                                Text("\(row.count)")
+                                    .fontWeight(.medium)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Статистика")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+}
+
+private struct ProfileHealthSheet: View {
+    var profile: UserProfile?
+    var gamification: Gamification?
+    var onPickKcal: (Int) async -> Void
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    if let bmi = gamification?.bmi, bmi.isFinite, let info = getBmiInterpretation(bmi: bmi) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Индекс массы тела")
+                                .font(.title3.weight(.bold))
+                            Text("ИМТ \(String(format: "%.1f", bmi).replacingOccurrences(of: ".", with: ",")) — \(info.category)")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Text(info.detail)
+                                .font(.body)
+                            Text("Ограничения показателя")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .padding(.top, 4)
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("• ИМТ — упрощённый показатель для взрослых.")
+                                Text("• Не учитывает мышечную массу, пол и возраст детей.")
+                            }
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(RoundedRectangle(cornerRadius: 16).fill(Color(uiColor: .secondarySystemGroupedBackground)))
+                    }
+
+                    if let p = profile {
+                        let normsPack = computeTdeeAndKcalNorms(p)
+                        let norms = normsPack.norms
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Суточные калории")
+                                .font(.title3.weight(.bold))
+                            Text(norms.maintenance != nil ? "Три ориентира при обычной нагрузке" : "Не удалось оценить по текущим данным")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            if let d = norms.deficit, let m = norms.maintenance, let s = norms.surplus {
+                                kcalRow(label: "Похудение", value: d)
+                                Divider()
+                                kcalRow(label: "Поддержание веса", value: m)
+                                Divider()
+                                kcalRow(label: "Набор веса", value: s)
+                                Text("Оценка по Mifflin–St Jeor, \(kcalRecommendationAgeFootnote(p)), умеренная активность. Не заменяет консультацию врача.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.top, 6)
+                                Text("Нажмите строку, чтобы записать ориентир в профиль как дневную цель.")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            } else {
+                                Text("Заполните анкету (рост, вес), чтобы получить ориентиры.")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(RoundedRectangle(cornerRadius: 16).fill(Color(uiColor: .secondarySystemGroupedBackground)))
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("Здоровье")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+
+    private func kcalRow(label: String, value: Int) -> some View {
+        Button {
+            Task { await onPickKcal(value) }
+        } label: {
+            HStack {
+                Text(label)
+                Spacer()
+                Text("~\(value) ккал")
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue))
+            }
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct ProfileLevelSheet: View {
+    var g: Gamification?
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    if let g {
+                        let level = g.level ?? 1
+                        Text(athleteLevelLabel(level: level))
+                            .font(.title2.weight(.heavy))
+                        Text("Уровень \(level)")
+                            .font(.title3)
+                            .foregroundStyle(.secondary)
+                        if let pct = g.progressPct {
+                            let clamped = min(max(pct, 0), 1)
+                            ProgressView(value: clamped) {
+                                Text("Опыт в уровне")
+                            } currentValueLabel: {
+                                let into = g.xpIntoLevel ?? 0
+                                let need = g.xpForNextLevel ?? 0
+                                Text("\(into) / \(into + max(0, need)) XP")
+                                    .font(.caption)
+                            }
+                            .tint(Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue))
+                        }
+                        Group {
+                            statLine("Всего XP", value: "\(g.xpTotal ?? 0)")
+                            statLine("За тренировки", value: "\(g.xpFromWorkouts ?? 0)")
+                            statLine("Бонус", value: "\(g.xpFromBonus ?? g.bonusXp ?? 0)")
+                        }
+                        .font(.body)
+                    } else {
+                        Text("Нет данных геймификации.")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("Уровень")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+
+    private func statLine(_ title: String, value: String) -> some View {
+        HStack {
+            Text(title)
+            Spacer()
+            Text(value).fontWeight(.semibold)
+        }
+    }
+}
+
+private struct ProfileTrophiesSheet: View {
+    var achievements: [Achievement]
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(achievements, id: \.id) { a in
+                    HStack(alignment: .top, spacing: 12) {
+                        Text(a.icon)
+                            .font(.title2)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(a.title)
+                                .font(.body.weight(.semibold))
+                            Text(a.unlocked ? "Получено" : "Пока закрыто")
+                                .font(.caption)
+                                .foregroundStyle(a.unlocked ? .green : .secondary)
+                        }
+                        Spacer()
+                    }
+                    .opacity(a.unlocked ? 1 : 0.55)
+                }
+            }
+            .navigationTitle("Трофеи")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+}
+
+private struct ProfileHintSheet: View {
+    var text: String
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                Text(text)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.secondary)
+                    .padding()
+                Spacer()
+            }
+            .navigationTitle("Упражнения")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("OK") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+private struct ProfileEditSheet: View {
+    @EnvironmentObject private var appState: AppState
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var displayName = ""
+    @State private var heightCm = ""
+    @State private var weightKg = ""
+    @State private var ageYears = ""
+    @State private var sex = ""
+    @State private var dailyKcal = ""
+    @State private var shareBody = false
+    @State private var shareProofs = false
+    @State private var showInCommunity = true
+    @State private var saving = false
+    @State private var errorBanner: String?
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                if let banner = errorBanner {
+                    Section { Text(banner).foregroundStyle(.red) }
+                }
+                Section("Имя") {
+                    TextField("Отображаемое имя", text: $displayName)
+                }
+                Section("Антропометрия") {
+                    TextField("Рост, см", text: $heightCm)
+                    #if os(iOS)
+                        .keyboardType(.numberPad)
+                    #endif
+                    TextField("Вес, кг", text: $weightKg)
+                    #if os(iOS)
+                        .keyboardType(.decimalPad)
+                    #endif
+                    TextField("Возраст, лет", text: $ageYears)
+                    #if os(iOS)
+                        .keyboardType(.numberPad)
+                    #endif
+                    TextField("Пол (male / female или пусто)", text: $sex)
+                }
+                Section("Цель по калориям") {
+                    TextField("Ккал в день (0 — не задано)", text: $dailyKcal)
+                    #if os(iOS)
+                        .keyboardType(.numberPad)
+                    #endif
+                }
+                Section("Приватность") {
+                    Toggle("Делиться параметрами тела", isOn: $shareBody)
+                    Toggle("Крупные доказательства", isOn: $shareProofs)
+                    Toggle("Показывать в списке сообщества", isOn: $showInCommunity)
+                }
+                Section {
+                    Button(saving ? "Сохранение…" : "Сохранить") {
+                        Task { await save() }
+                    }
+                    .disabled(saving)
+                }
+            }
+            .navigationTitle("Анкета")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Закрыть") { dismiss() }
+                }
+            }
+            .onAppear { hydrate() }
+            .onChange(of: appState.bootstrap?.user.profile.displayName) { _, _ in hydrate() }
+        }
+    }
+
+    private func hydrate() {
+        guard let p = appState.bootstrap?.user.profile else { return }
+        displayName = p.displayName ?? appState.bootstrap?.user.login ?? ""
+        heightCm = p.heightCm ?? ""
+        weightKg = p.weightKg ?? ""
+        ageYears = p.ageYears ?? ""
+        sex = p.sex ?? ""
+        if let k = p.dailyKcalGoal { dailyKcal = k > 0 ? String(k) : "" }
+        shareBody = p.shareBodyStats ?? false
+        shareProofs = p.shareProofsLarge ?? false
+        showInCommunity = p.showInCommunityList ?? true
+    }
+
+    private func save() async {
+        saving = true
+        errorBanner = nil
+        defer { saving = false }
+        let kcalParsed: Int? = {
+            let t = dailyKcal.trimmingCharacters(in: .whitespaces)
+            if t.isEmpty { return nil }
+            return Int(t)
+        }()
+        do {
+            try await APIClient.shared.patchMe(ProfilePatchBody(
+                displayName: displayName.trimmingCharacters(in: .whitespacesAndNewlines),
+                heightCm: heightCm.isEmpty ? nil : heightCm,
+                weightKg: weightKg.isEmpty ? nil : weightKg,
+                ageYears: ageYears.isEmpty ? nil : ageYears,
+                sex: sex.isEmpty ? nil : sex,
+                shareBodyStats: shareBody,
+                shareProofsLarge: shareProofs,
+                showInCommunityList: showInCommunity,
+                dailyKcalGoal: kcalParsed
+            ))
+            await appState.refreshBootstrap()
+            dismiss()
+        } catch let e as APIClientError {
+            errorBanner = e.message
+        } catch {
+            errorBanner = error.localizedDescription
+        }
+    }
+}
+
