@@ -6,13 +6,13 @@ struct MainTabView: View {
     var body: some View {
         TabView {
             CalendarTabView()
-                .tabItem { Label("Тренировки", systemImage: "figure.strengthtraining.traditional") }
+                .tabItem { tabItemLabel("Тренировки", systemImage: "figure.strengthtraining.traditional", imageScale: .small) }
             NutritionTabView()
-                .tabItem { Label("Питание", systemImage: "fork.knife") }
+                .tabItem { tabItemLabel("Питание", systemImage: "fork.knife", imageScale: .small) }
             CommunityTabView()
-                .tabItem { Label("Сообщество", systemImage: "person.3") }
+                .tabItem { tabItemLabel("Сообщество", systemImage: "person.2", imageScale: .small) }
             ProfileTabView()
-                .tabItem { Label("Профиль", systemImage: "person.crop.circle") }
+                .tabItem { tabItemLabel("Профиль", systemImage: "person.crop.circle", imageScale: .medium) }
         }
         .overlay(alignment: .top) {
             if appState.isLoading {
@@ -21,6 +21,16 @@ struct MainTabView: View {
                     .background(.ultraThinMaterial, in: Capsule())
                     .padding(.top, 8)
             }
+        }
+    }
+
+    /// Единый рендер вкладок: у SF Symbols разная «оптическая» масса; `imageScale` и более компактный символ для сообщества выравнивают таббар.
+    private func tabItemLabel(_ title: String, systemImage: String, imageScale: Image.Scale) -> some View {
+        Label {
+            Text(title)
+        } icon: {
+            Image(systemName: systemImage)
+                .imageScale(imageScale)
         }
     }
 }
