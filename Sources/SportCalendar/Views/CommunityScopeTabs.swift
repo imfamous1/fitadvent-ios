@@ -15,7 +15,7 @@ struct CommunityScopeTabs: View {
         .accessibilityLabel("Фильтр списка сообщества")
         .padding(3)
         .background {
-            RoundedRectangle(cornerRadius: 11, style: .continuous)
+            Capsule(style: .continuous)
                 .fill(Material.thickMaterial)
         }
     }
