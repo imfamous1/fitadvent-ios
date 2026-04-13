@@ -63,7 +63,29 @@ struct CommunityProofItem: Codable, Sendable, Hashable, Identifiable {
     var proofType: String?
     var proofCaption: String?
 
-    var id: String { "\(calendarId)|\(day)|\(proofUrl ?? "")" }
+    /// Стабильный ключ для списков: без дублей при пустом `proofUrl` и при нескольких отличиях в метаданных.
+    var id: String {
+        let url = proofUrl ?? ""
+        let at = doneAt ?? ""
+        let typ = proofType ?? ""
+        let cap = proofCaption ?? ""
+        return "\(calendarId)|\(day)|\(url)|\(at)|\(typ)|\(cap)"
+    }
+
+    /// Только элементы с реальным файлом — без «пустых» плейсхолдеров в сетке.
+    static func galleryDisplayList(_ proofs: [CommunityProofItem]) -> [CommunityProofItem] {
+        var seen = Set<String>()
+        var out: [CommunityProofItem] = []
+        out.reserveCapacity(proofs.count)
+        for p in proofs {
+            guard let raw = p.proofUrl?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else { continue }
+            let key = p.id
+            if seen.contains(key) { continue }
+            seen.insert(key)
+            out.append(p)
+        }
+        return out
+    }
 
     var isVideo: Bool {
         let t = (proofType ?? "").lowercased()

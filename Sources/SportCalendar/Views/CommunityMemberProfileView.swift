@@ -1,9 +1,22 @@
 import AVKit
 import SwiftUI
 
-private struct CommunityProofLightboxRoute: Identifiable {
-    var id: String { "\(index)" }
+/// Явные id, чтобы два `LazyVGrid` на одном экране не делили одинаковые `0,1,2…` у `ForEach`.
+private struct CommunityProfileProofGridSlot: Identifiable {
+    let id: String
     let index: Int
+    let proof: CommunityProofItem
+}
+
+private struct CommunityProfileProgramGridSlot: Identifiable {
+    let id: String
+    let exerciseId: String
+}
+
+private struct CommunityProofLightboxTab: Identifiable {
+    let id: String
+    let index: Int
+    let proof: CommunityProofItem
 }
 
 /// Экран профиля участника сообщества (аналог `openProfileModal` на вебе).
@@ -17,7 +30,8 @@ struct CommunityMemberProfileView: View {
     let boardCalendarId: String
 
     @State private var acting = false
-    @State private var lightbox: CommunityProofLightboxRoute?
+    @State private var lightboxPresented = false
+    @State private var lightboxStartIndex = 0
 
     private var isSelf: Bool {
         guard let me = appState.bootstrap?.user.login else { return false }
@@ -40,10 +54,6 @@ struct CommunityMemberProfileView: View {
         isSelf || user.shareBodyStats == true || isFriend
     }
 
-    private var canEnlargeProofs: Bool {
-        isSelf || user.shareProofsLarge == true || isFriend
-    }
-
     private var mergedProofs: [CommunityProofItem] {
         let selfKey = appState.bootstrap.map { CommunityLoginKey.from(login: $0.user.login) }
         return CommunityProofsMerge.mergedProofs(
@@ -52,6 +62,21 @@ struct CommunityMemberProfileView: View {
             loginKey: loginKey,
             selfLoginKey: selfKey
         )
+    }
+
+    /// Для сетки и лайтбокса: только с непустым `proofUrl`, без дубликатов.
+    private var galleryProofs: [CommunityProofItem] {
+        CommunityProofItem.galleryDisplayList(mergedProofs)
+    }
+
+    private var proofGridSlots: [CommunityProfileProofGridSlot] {
+        galleryProofs.enumerated().map { i, p in
+            CommunityProfileProofGridSlot(
+                id: "CommunityMemberProfile.proof.\(i)",
+                index: i,
+                proof: p
+            )
+        }
     }
 
     private var monthWorkoutCount: Int {
@@ -72,11 +97,6 @@ struct CommunityMemberProfileView: View {
             VStack(alignment: .leading, spacing: 16) {
                 whoBlock
                 xpBlock
-                if !mergedProofs.isEmpty, !canEnlargeProofs, !isSelf {
-                    Text("Увеличение фото отключено в настройках профиля участника.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
                 proofsSection
                 monthProgressSection
                 programSection
@@ -103,11 +123,11 @@ struct CommunityMemberProfileView: View {
                 friendToolbarContent
             }
         }
-        .fullScreenCover(item: $lightbox) { route in
+        .fullScreenCover(isPresented: $lightboxPresented) {
             CommunityProofLightboxView(
                 ownerLoginKey: loginKey,
-                proofs: mergedProofs,
-                startIndex: route.index,
+                proofs: galleryProofs,
+                startIndex: lightboxStartIndex,
                 canInteract: true
             )
             .environmentObject(appState)
@@ -268,23 +288,23 @@ struct CommunityMemberProfileView: View {
             HStack(spacing: 6) {
                 Text("Фото тренировок")
                     .font(.headline.weight(.bold))
-                if !mergedProofs.isEmpty {
-                    Text("· \(mergedProofs.count)")
+                if !galleryProofs.isEmpty {
+                    Text("· \(galleryProofs.count)")
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
             }
             .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
-            if mergedProofs.isEmpty {
+            if galleryProofs.isEmpty {
                 Text("Пока нет загруженных фото к дням.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
                 let cols = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
                 LazyVGrid(columns: cols, spacing: 8) {
-                    ForEach(Array(mergedProofs.enumerated()), id: \.element.id) { idx, proof in
-                        proofThumb(proof, index: idx)
+                    ForEach(proofGridSlots) { slot in
+                        proofThumb(slot.proof, index: slot.index)
                     }
                 }
             }
@@ -293,37 +313,49 @@ struct CommunityMemberProfileView: View {
 
     private func proofThumb(_ proof: CommunityProofItem, index: Int) -> some View {
         Button {
-            if canEnlargeProofs || isSelf {
-                lightbox = CommunityProofLightboxRoute(index: index)
-            }
+            lightboxStartIndex = index
+            lightboxPresented = true
         } label: {
-            ZStack {
-                if let u = proof.proofUrl.flatMap({ URL(string: $0) }) {
-                    if proof.isVideo {
-                        Color.black.opacity(0.08)
-                        Image(systemName: "play.circle.fill")
-                            .font(.largeTitle)
-                            .foregroundStyle(.primary)
-                    } else {
-                        AsyncImage(url: u) { phase in
-                            switch phase {
-                            case .success(let img):
-                                img.resizable().scaledToFill()
-                            default:
-                                Color(uiColor: .tertiarySystemFill)
-                            }
-                        }
-                    }
-                } else {
-                    Color(uiColor: .tertiarySystemFill)
+            Color.clear
+                .aspectRatio(1, contentMode: .fit)
+                .overlay {
+                    proofThumbMedia(proof)
+                        .allowsHitTesting(false)
                 }
-            }
-            .frame(minHeight: 96)
-            .clipped()
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .buttonStyle(.plain)
-        .disabled(!canEnlargeProofs && !isSelf)
+    }
+
+    @ViewBuilder
+    private func proofThumbMedia(_ proof: CommunityProofItem) -> some View {
+        ZStack {
+            if let u = proof.proofUrl.flatMap({ URL(string: $0) }) {
+                if proof.isVideo {
+                    Color.black.opacity(0.08)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    Image(systemName: "play.circle.fill")
+                        .font(.largeTitle)
+                        .foregroundStyle(.primary)
+                } else {
+                    AsyncImage(url: u) { phase in
+                        switch phase {
+                        case .success(let img):
+                            img
+                                .resizable()
+                                .scaledToFill()
+                        default:
+                            Color(uiColor: .tertiarySystemFill)
+                        }
+                    }
+                }
+            } else {
+                Color(uiColor: .tertiarySystemFill)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
     }
 
     private var monthProgressSection: some View {
@@ -388,9 +420,16 @@ struct CommunityMemberProfileView: View {
                         alignment: .leading,
                         spacing: 8
                     ) {
-                        ForEach(ids, id: \.self) { exId in
+                        ForEach(
+                            ids.enumerated().map { i, exId in
+                                CommunityProfileProgramGridSlot(
+                                    id: "CommunityMemberProfile.program.\(i)",
+                                    exerciseId: exId
+                                )
+                            }
+                        ) { slot in
                             let label = WorkoutHistoryReportBuilder.labelForBoardProgramExercise(
-                                exId,
+                                slot.exerciseId,
                                 customLabels: mp.customExerciseLabels
                             )
                             Text(label)
@@ -577,42 +616,60 @@ private struct CommunityProofLightboxView: View {
     @State private var likeBusy = false
 
     var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-            TabView(selection: $page) {
-                ForEach(Array(proofs.enumerated()), id: \.offset) { idx, proof in
-                    proofPage(proof)
-                        .tag(idx)
+        NavigationStack {
+            ZStack {
+                Color.black.ignoresSafeArea()
+                TabView(selection: $page) {
+                    ForEach(
+                        proofs.enumerated().map { i, p in
+                            CommunityProofLightboxTab(
+                                id: "CommunityProofLightbox.page.\(i).\(p.id)",
+                                index: i,
+                                proof: p
+                            )
+                        }
+                    ) { tab in
+                        proofPage(tab.proof)
+                            .tag(tab.index)
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: proofs.count > 1 ? .automatic : .never))
+                .onAppear { page = min(max(0, startIndex), max(0, proofs.count - 1)) }
+                .onChange(of: page) { _, new in
+                    Task { await loadEngagement(for: new) }
+                }
+                .task {
+                    await loadEngagement(for: page)
+                }
+
+                VStack {
+                    Spacer()
+                    if canInteract {
+                        bottomBar
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .background(
+                                .ultraThinMaterial,
+                                in: RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
+                            )
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 8)
+                    }
                 }
             }
-            .tabViewStyle(.page(indexDisplayMode: proofs.count > 1 ? .automatic : .never))
-            .onAppear { page = min(max(0, startIndex), max(0, proofs.count - 1)) }
-            .onChange(of: page) { _, new in
-                Task { await loadEngagement(for: new) }
-            }
-            .task {
-                await loadEngagement(for: page)
-            }
-
-            VStack {
-                HStack {
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                // Как `chevron.backward` на `CommunityMemberProfileView`: только символ, без фона и без «капсулы».
+                ToolbarItem(placement: .topBarLeading) {
                     Button {
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(.white)
+                        Image(systemName: "xmark")
+                            .font(.body.weight(.semibold))
                     }
-                    .padding()
-                    Spacer()
-                }
-                Spacer()
-                if canInteract {
-                    bottomBar
-                        .padding()
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        .padding()
+                    .accessibilityLabel("Закрыть")
                 }
             }
         }
@@ -769,25 +826,43 @@ private struct ProofCommentsSheetView: View {
                     }
                     .listStyle(.plain)
                 }
-                HStack(alignment: .bottom, spacing: 8) {
+                HStack(alignment: .bottom, spacing: 10) {
                     TextField("Комментарий", text: $draft, axis: .vertical)
-                        .textFieldStyle(.roundedBorder)
-                        .lineLimit(1 ... 4)
+                        .font(.body)
+                        .lineLimit(3 ... 6)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .frame(minHeight: ProfileChrome.profileBarFixedHeight, alignment: .topLeading)
+                        .background(
+                            RoundedRectangle(cornerRadius: ProfileChrome.radiusLg, style: .continuous)
+                                .fill(ProfileChrome.groupedContentSurface)
+                        )
                     Button {
                         Task { await send() }
                     } label: {
                         Image(systemName: "arrow.up.circle.fill")
-                            .font(.title2)
+                            .font(.system(size: 34, weight: .regular))
+                            .foregroundStyle(Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue))
                     }
+                    .buttonStyle(.plain)
                     .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || sending)
                 }
-                .padding()
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
             }
             .navigationTitle("Комментарии")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Закрыть") { dismiss() }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(Color.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Закрыть")
                 }
             }
             .task { await reload() }

@@ -58,10 +58,22 @@ struct CommunityTabView: View {
                 var tx = Transaction()
                 tx.disablesAnimations = true
                 withTransaction(tx) {
-                    scopeTabsMinY = minY
+                    // Не пишем в state без изменений — иначе SwiftUI ругается «multiple times per frame» при смене табов/скролле.
+                    let yChanged =
+                        scopeTabsMinY.isInfinite != minY.isInfinite
+                        || (!minY.isInfinite && !scopeTabsMinY.isInfinite && abs(scopeTabsMinY - minY) > 0.5)
+                    if yChanged {
+                        scopeTabsMinY = minY
+                    }
                     guard !minY.isInfinite else { return }
-                    if minY < 34 { scopeTabsOverlayLatch = true }
-                    else if minY > 50 { scopeTabsOverlayLatch = false }
+                    let newLatch: Bool = {
+                        if minY < 34 { return true }
+                        if minY > 50 { return false }
+                        return scopeTabsOverlayLatch
+                    }()
+                    if scopeTabsOverlayLatch != newLatch {
+                        scopeTabsOverlayLatch = newLatch
+                    }
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -220,11 +232,13 @@ struct CommunityTabView: View {
     private func communityRow(_ row: (key: String, user: BoardUserPublic)) -> some View {
         let selfKey = appState.bootstrap.map { CommunityLoginKey.from(login: $0.user.login) }
         let isSelf = selfKey == row.key
-        let proofs = CommunityProofsMerge.mergedProofs(
-            server: row.user.communityProofs,
-            bootstrap: appState.bootstrap,
-            loginKey: row.key,
-            selfLoginKey: selfKey
+        let proofs = CommunityProofItem.galleryDisplayList(
+            CommunityProofsMerge.mergedProofs(
+                server: row.user.communityProofs,
+                bootstrap: appState.bootstrap,
+                loginKey: row.key,
+                selfLoginKey: selfKey
+            )
         )
         let thumbs = Array(proofs.prefix(4))
         let workouts = max(0, row.user.totalWorkoutsLifetime ?? 0)
@@ -267,7 +281,7 @@ struct CommunityTabView: View {
             }
             if !thumbs.isEmpty {
                 HStack(spacing: 6) {
-                    ForEach(thumbs) { p in
+                    ForEach(Array(thumbs.enumerated()), id: \.offset) { _, p in
                         proofSlotThumb(p)
                     }
                 }

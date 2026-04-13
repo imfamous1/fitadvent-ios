@@ -181,7 +181,8 @@ struct CalendarTabView: View {
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
                 }
-                ForEach(0 ..< leading, id: \.self) { _ in
+                // id не должны пересекаться с `1...dim` у дней месяца (иначе LazyVGrid дублирует id1…5 и т.д.).
+                ForEach((0 ..< leading).map { "calendarMonthLeading.\($0)" }, id: \.self) { _ in
                     Color.clear.frame(width: 36, height: 36)
                 }
                 ForEach(1 ... dim, id: \.self) { day in
