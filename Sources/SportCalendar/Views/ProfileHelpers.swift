@@ -85,47 +85,6 @@ func vipActive(_ p: UserProfile) -> Bool {
     return t > Date()
 }
 
-// MARK: - Тренировки по месяцам (все календари)
-
-struct WorkoutMonthStat: Identifiable {
-    var id: String { monthKey }
-    var monthKey: String
-    var label: String
-    var count: Int
-}
-
-/// Считает отмеченные дни `done == true` по всем календарям, группирует по YYYY-MM.
-func workoutStatsByMonth(progress: [String: ProgressCalendar]) -> [WorkoutMonthStat] {
-    var byMonth: [String: Int] = [:]
-    for (_, cal) in progress {
-        for (dayKey, day) in cal.days where day.done == true {
-            let prefix = String(dayKey.prefix(7))
-            if prefix.count == 7 {
-                byMonth[prefix, default: 0] += 1
-            }
-        }
-    }
-    let sortedKeys = byMonth.keys.sorted()
-    return sortedKeys.map { key in
-        WorkoutMonthStat(monthKey: key, label: monthTitleRu(ym: key), count: byMonth[key] ?? 0)
-    }
-}
-
-func totalWorkoutDays(progress: [String: ProgressCalendar]) -> Int {
-    progress.values.reduce(0) { partial, cal in
-        partial + cal.days.values.filter { $0.done == true }.count
-    }
-}
-
-private func monthTitleRu(ym: String) -> String {
-    let parts = ym.split(separator: "-")
-    guard parts.count == 2,
-          let y = Int(parts[0]),
-          let m = Int(parts[1]), m >= 1, m <= 12 else { return ym }
-    let cap = monthsGenRu[m - 1].capitalized
-    return "\(cap) \(y)"
-}
-
 // MARK: - Москва: баннер голосования за программу (последние 7 дней месяца)
 
 func moscowYmdNow() -> (year: Int, month: Int, day: Int) {

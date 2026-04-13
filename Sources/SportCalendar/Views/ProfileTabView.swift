@@ -182,26 +182,41 @@ struct ProfileTabView: View {
         if vip, !vipDate.isEmpty { chipKinds.append(.vip("Премиум до \(vipDate)")) }
         if showTg, !tgText.isEmpty { chipKinds.append(.telegram(tgText)) }
 
-        let chipColumns = [
-            GridItem(.flexible(), spacing: 8),
-            GridItem(.flexible(), spacing: 8),
-        ]
         return Group {
             if !chipKinds.isEmpty {
-                LazyVGrid(columns: chipColumns, alignment: .center, spacing: 8) {
-                    ForEach(chipKinds) { kind in
-                        switch kind {
-                        case .athlete(let text):
-                            metaChip(text, style: .athlete)
-                        case .vip(let text):
-                            metaChip(text, style: .vip)
-                        case .telegram(let text):
-                            telegramMetaChip(text: text)
+                VStack(spacing: 8) {
+                    ForEach(0 ..< ((chipKinds.count + 1) / 2), id: \.self) { row in
+                        let i0 = row * 2
+                        let i1 = i0 + 1
+                        let hasPair = i1 < chipKinds.count
+                        if hasPair {
+                            HStack(spacing: 8) {
+                                metaChipCell(chipKinds[i0]).frame(maxWidth: .infinity)
+                                metaChipCell(chipKinds[i1]).frame(maxWidth: .infinity)
+                            }
+                        } else {
+                            HStack {
+                                Spacer(minLength: 0)
+                                metaChipCell(chipKinds[i0])
+                                Spacer(minLength: 0)
+                            }
                         }
                     }
                 }
                 .frame(maxWidth: .infinity)
             }
+        }
+    }
+
+    @ViewBuilder
+    private func metaChipCell(_ kind: ProfileMetaChipKind) -> some View {
+        switch kind {
+        case .athlete(let text):
+            metaChip(text, style: .athlete)
+        case .vip(let text):
+            metaChip(text, style: .vip)
+        case .telegram(let text):
+            telegramMetaChip(text: text)
         }
     }
 
@@ -230,8 +245,7 @@ struct ProfileTabView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
         }
-        .font(.caption.weight(.semibold))
-        .frame(maxWidth: .infinity)
+               .font(.caption.weight(.semibold))
         .multilineTextAlignment(.center)
         .padding(.horizontal, 9)
         .padding(.vertical, 4)
@@ -245,7 +259,6 @@ struct ProfileTabView: View {
             .lineLimit(1)
             .minimumScaleFactor(0.75)
             .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
             .padding(.horizontal, 9)
             .padding(.vertical, 4)
             .background(chipBackground(style))
@@ -281,8 +294,6 @@ struct ProfileTabView: View {
 
     private var statsRow: some View {
         let b = appState.bootstrap
-        let progress = b?.progress ?? [:]
-        let total = b.map { totalWorkoutDays(progress: $0.progress) } ?? 0
         let g = b?.gamification
         let level = g?.level ?? 1
         let bmi = g?.bmi
@@ -291,7 +302,7 @@ struct ProfileTabView: View {
             spacing: 8
         ) {
             statPillButton(title: "Статистика", systemImage: "chart.bar.fill", badge: nil) {
-                activeSheet = .stats(total: total, months: workoutStatsByMonth(progress: progress))
+                if let b { activeSheet = .stats(WorkoutHistoryReportBuilder.build(from: b)) }
             }
             if let bmi, bmi.isFinite {
                 statPillButton(title: "Здоровье", systemImage: "scalemass", badge: nil) {
@@ -499,8 +510,8 @@ struct ProfileTabView: View {
         switch sheet {
         case .settings:
             ProfileSettingsSheet()
-        case .stats(let total, let months):
-            ProfileStatsSheet(total: total, months: months)
+        case .stats(let report):
+            ProfileStatsSheet(report: report)
         case .health:
             ProfileHealthSheet(
                 profile: appState.bootstrap?.user.profile,
@@ -559,7 +570,7 @@ struct ProfileTabView: View {
 
 enum ProfileSheet: Identifiable {
     case settings
-    case stats(total: Int, months: [WorkoutMonthStat])
+    case stats(WorkoutHistoryReport)
     case health
     case level
     case trophies
@@ -607,46 +618,154 @@ private struct ProfileSettingsSheet: View {
 }
 
 private struct ProfileStatsSheet: View {
-    var total: Int
-    var months: [WorkoutMonthStat]
+    @Environment(\.dismiss) private var dismiss
+    var report: WorkoutHistoryReport
 
     var body: some View {
+        let (cy, cm, _) = moscowYmdNow()
+        let currentSortKey = cy * 12 + cm
+        let currentMs = report.sections.filter { $0.sortKey == currentSortKey }
+        let otherMs = report.sections.filter { $0.sortKey != currentSortKey }
+        let calId = String(format: "%04d-%02d", cy, cm)
+        let currentMonthTitle = MoscowCalendar.monthTitle(calendarId: calId)
+        let currentWorkouts = currentMs.first?.workouts ?? 0
+        let currentRows = currentMs.first?.exerciseRows ?? []
+
         NavigationStack {
-            List {
-                Section {
-                    HStack {
-                        Text("Всего тренировок")
-                        Spacer()
-                        Text("\(total)")
-                            .fontWeight(.semibold)
-                            .foregroundStyle(Color(red: ProfileChrome.accentBlue.red, green: ProfileChrome.accentBlue.green, blue: ProfileChrome.accentBlue.blue))
-                    }
-                } header: {
-                    Text("Сводка")
-                }
-                if months.isEmpty {
-                    Section {
-                        Text("Пока нет отмеченных дней в календарях.")
-                            .foregroundStyle(.secondary)
-                    }
-                } else {
-                    Section("По месяцам") {
-                        ForEach(months) { row in
-                            HStack {
-                                Text(row.label)
-                                Spacer()
-                                Text("\(row.count)")
-                                    .fontWeight(.medium)
-                                    .foregroundStyle(.secondary)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(currentMonthTitle)
+                                .font(.title3.weight(.bold))
+                            (Text("Тренировок: ") + Text("\(currentWorkouts)").fontWeight(.bold))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
+
+                        if report.sections.isEmpty {
+                            emptyState(total: report.totalWorkoutsAllCalendars)
+                        } else {
+                            if !currentRows.isEmpty {
+                                exerciseListCard(rows: currentRows)
+                            } else if !otherMs.isEmpty {
+                                currentMonthEmptyHint(monthTitle: currentMonthTitle)
                             }
                         }
                     }
+
+                    if !otherMs.isEmpty {
+                        DisclosureGroup {
+                            VStack(alignment: .leading, spacing: 16) {
+                                ForEach(otherMs) { section in
+                                    archiveMonthBlock(section)
+                                }
+                            }
+                            .padding(.top, 8)
+                        } label: {
+                            HStack {
+                                Text("Другие месяцы")
+                                    .font(.body.weight(.semibold))
+                                Text("(\(otherMs.count))")
+                                    .font(.body.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .tint(Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue))
+                    }
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
             }
+            .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("Статистика")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(Color.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Закрыть")
+                }
+            }
         }
     }
+
+    private func exerciseListCard(rows: [WorkoutHistoryExerciseRow]) -> some View {
+        VStack(spacing: 0) {
+            ForEach(Array(rows.enumerated()), id: \.element.id) { idx, row in
+                if idx > 0 {
+                    Divider()
+                        .padding(.leading, ProfileChrome.exercisePlanDividerLeading)
+                }
+                HStack(alignment: .firstTextBaseline) {
+                    Text(row.label)
+                        .font(.body)
+                    Spacer(minLength: 12)
+                    Text(row.valueDisplay)
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(Color(red: ProfileChrome.accentBlue.red, green: ProfileChrome.accentBlue.green, blue: ProfileChrome.accentBlue.blue))
+                        .multilineTextAlignment(.trailing)
+                }
+                .padding(.vertical, 12)
+                .padding(.horizontal, ProfileChrome.exerciseRowPaddingH)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
+                .fill(Color(uiColor: .secondarySystemGroupedBackground))
+        )
+    }
+
+    private func archiveMonthBlock(_ section: WorkoutHistoryMonthSection) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(section.title)
+                    .font(.title3.weight(.bold))
+                (Text("Тренировок: ") + Text("\(section.workouts)").fontWeight(.bold))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
+
+            if !section.exerciseRows.isEmpty {
+                exerciseListCard(rows: section.exerciseRows)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func emptyState(total: Int) -> some View {
+        Group {
+            if total > 0 {
+                Text("Не удалось загрузить программы месяцев для детализации.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Отметьте дни в календаре — здесь появится разбивка по месяцам.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
+    }
+
+    private func currentMonthEmptyHint(monthTitle: String) -> some View {
+        (Text("За ") + Text(monthTitle).fontWeight(.bold) + Text(" (Москва) пока нет отмеченных тренировок."))
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
+    }
+
 }
 
 private struct ProfileHealthSheet: View {
