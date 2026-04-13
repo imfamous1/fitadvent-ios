@@ -1,5 +1,12 @@
 import SwiftUI
 
+private struct CommunityTabsMinYPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = .infinity
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = min(value, nextValue())
+    }
+}
+
 struct CommunityTabView: View {
     @EnvironmentObject private var appState: AppState
     @State private var search = ""
@@ -9,6 +16,10 @@ struct CommunityTabView: View {
     @State private var loadingBoard = false
     @State private var boardError: String?
     @State private var actingKey: String?
+    /// Верх сегментов в координатах `communityScroll` (для sticky без скачка при смене оверлей ↔ скролл).
+    @State private var scopeTabsMinY: CGFloat = .infinity
+    /// Защёлка оверлея: иначе у порога `minY` отскок скролла даёт мигание.
+    @State private var scopeTabsOverlayLatch = false
 
     private var implicitBoardCalendarId: String {
         let keys = (appState.bootstrap.map { Array($0.progress.keys) } ?? []).sorted()
@@ -24,7 +35,7 @@ struct CommunityTabView: View {
                         .padding(.bottom, 20)
 
                     communitySearchField
-                    CommunityScopeTabs(filter: $filter)
+                    scopeTabsInScroll
                         .padding(.bottom, 16)
                     incomingRequests
                     feedSection
@@ -32,8 +43,27 @@ struct CommunityTabView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 28)
             }
+            .coordinateSpace(name: "communityScroll")
             .scrollIndicators(.hidden)
             .background(Color(uiColor: .systemGroupedBackground))
+            .overlay(alignment: .top) {
+                CommunityScopeTabs(filter: $filter)
+                    .padding(.horizontal, 16)
+                    .offset(y: scopeTabsOverlayOffsetY)
+                    .opacity(scopeTabsShowOverlay ? 1 : 0)
+                    .allowsHitTesting(scopeTabsShowOverlay)
+                    .accessibilityHidden(!scopeTabsShowOverlay)
+            }
+            .onPreferenceChange(CommunityTabsMinYPreferenceKey.self) { minY in
+                var tx = Transaction()
+                tx.disablesAnimations = true
+                withTransaction(tx) {
+                    scopeTabsMinY = minY
+                    guard !minY.isInfinite else { return }
+                    if minY < 34 { scopeTabsOverlayLatch = true }
+                    else if minY > 50 { scopeTabsOverlayLatch = false }
+                }
+            }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
             .task { await loadBoard() }
@@ -51,6 +81,31 @@ struct CommunityTabView: View {
                 }
             }
         }
+    }
+
+    /// Сегменты в потоке скролла; пока активен оверлей — скрываем (та же позиция задаётся `offset` у копии).
+    private var scopeTabsInScroll: some View {
+        CommunityScopeTabs(filter: $filter)
+            .opacity(scopeTabsShowOverlay ? 0 : 1)
+            .accessibilityHidden(scopeTabsShowOverlay)
+            .background(
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: CommunityTabsMinYPreferenceKey.self,
+                        value: proxy.frame(in: .named("communityScroll")).minY
+                    )
+                }
+            )
+    }
+
+    private var scopeTabsShowOverlay: Bool {
+        scopeTabsOverlayLatch
+    }
+
+    /// Пока табы «заехали» выше кромки (`minY < 0`), держим у верха; при возврате в зону 0…порог — двигаем вместе с контентом без скачка.
+    private var scopeTabsOverlayOffsetY: CGFloat {
+        if scopeTabsMinY < 0 { return 0 }
+        return scopeTabsMinY
     }
 
     // MARK: - Поиск (как `.comm-search` на вебе: 52pt, капсула, центр «Поиск»)

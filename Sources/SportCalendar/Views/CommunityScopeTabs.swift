@@ -1,55 +1,22 @@
 import SwiftUI
 
-/// «Все / Друзья» — высота как у поля «Поиск» (`ProfileChrome.profileBarFixedHeight`); системный `UISegmentedControl` не даёт увеличить визуальную высоту сегментов на новых iOS.
+/// «Все / Друзья» — системный сегментированный `Picker` + плотнее, чем «голый» glass у контрола, фон ближе по ощущению к таббару.
 struct CommunityScopeTabs: View {
     @Binding var filter: CommunityScopeFilter
 
-    private let tabs = CommunityScopeFilter.allCases
-
     var body: some View {
-        GeometryReader { geo in
-            let w = geo.size.width
-            let h = geo.size.height
-            let count = CGFloat(tabs.count)
-            let segmentW = w / max(count, 1)
-            let idx = CGFloat(tabs.firstIndex(of: filter) ?? 0)
-            let inset: CGFloat = 3
-            let pillW = max(0, segmentW - inset * 2)
-            let pillH = max(0, h - inset * 2)
-
-            ZStack(alignment: .topLeading) {
-                Capsule()
-                    .fill(ProfileChrome.groupedSegmentTrack)
-
-                Capsule()
-                    .fill(ProfileChrome.groupedContentSurface)
-                    .frame(width: pillW, height: pillH)
-                    .offset(x: inset + idx * segmentW, y: inset)
-                    .animation(.spring(response: 0.32, dampingFraction: 0.84), value: filter)
-
-                HStack(spacing: 0) {
-                    ForEach(tabs) { tab in
-                        Button {
-                            filter = tab
-                        } label: {
-                            Text(tab.rawValue)
-                                .font(.body.weight(filter == tab ? .semibold : .medium))
-                                .foregroundStyle(filter == tab ? Color.primary : Color.secondary)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
+        Picker("Фильтр списка сообщества", selection: $filter) {
+            ForEach(CommunityScopeFilter.allCases) { tab in
+                Text(tab.rawValue).tag(tab)
             }
-            .clipShape(Capsule())
-            .overlay(
-                Capsule()
-                    .strokeBorder(ProfileChrome.groupedControlOutline, lineWidth: 1)
-            )
         }
-        .frame(height: ProfileChrome.profileBarFixedHeight)
-        .accessibilityElement(children: .contain)
+        .pickerStyle(.segmented)
+        .labelsHidden()
         .accessibilityLabel("Фильтр списка сообщества")
+        .padding(3)
+        .background {
+            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                .fill(Material.thickMaterial)
+        }
     }
 }
