@@ -66,7 +66,7 @@ struct NutritionTabView: View {
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
                 .fill(Color(uiColor: .secondarySystemGroupedBackground))
         )
     }
@@ -152,7 +152,7 @@ struct NutritionTabView: View {
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
                     .fill(Color(uiColor: .secondarySystemGroupedBackground))
             )
             .padding(.bottom, 16)
@@ -185,7 +185,7 @@ struct NutritionTabView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
                     .background(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        RoundedRectangle(cornerRadius: ProfileChrome.radiusLg, style: .continuous)
                             .fill(Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue))
                     )
                     .foregroundStyle(.white)
@@ -194,7 +194,7 @@ struct NutritionTabView: View {
         }
         .padding()
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
                 .fill(Color(uiColor: .secondarySystemGroupedBackground))
         )
         .padding(.bottom, 16)
@@ -237,7 +237,7 @@ struct NutritionTabView: View {
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
                     .fill(Color(uiColor: .secondarySystemGroupedBackground))
             )
         } else if loading {

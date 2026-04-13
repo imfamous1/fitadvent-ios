@@ -3,10 +3,38 @@ import Foundation
 // MARK: - Стилистика (согласовано с sport-calendar-web)
 
 enum ProfileChrome {
-    /// --color-primary ≈ #2a6fb0
-    static let primary = (red: 0.165, green: 0.435, blue: 0.690)
-    /// Акцент иконок в stat-pill (--ui-blue)
-    static let accentBlue = (red: 0.22, green: 0.45, blue: 0.78)
+    /// Светлая тема: `--color-primary` `#e85d04` (`variables.css`)
+    static let primary = (red: 232.0 / 255.0, green: 93.0 / 255.0, blue: 4.0 / 255.0)
+    /// `--ui-blue` / `--btn-action-bg` `#008bff`
+    static let accentBlue = (red: 0.0, green: 139.0 / 255.0, blue: 1.0)
+    /// Светлая тема: `--color-error` `#d94828` (текст «Выйти» как на вебе)
+    static let error = (red: 217.0 / 255.0, green: 72.0 / 255.0, blue: 40.0 / 255.0)
+    /// `--btn-activity-surface` `#feffff` (фон кнопки выхода)
+    static let activitySurface = (red: 254.0 / 255.0, green: 255.0 / 255.0, blue: 255.0 / 255.0)
+
+    /// `--radius-lg` / `.btn`
+    static let radiusLg: CGFloat = 16
+    /// `--radius-xl` (карточки, панели)
+    static let radiusXl: CGFloat = 24
+
+    /// «Выйти»: только вертикальный padding (капсула по содержимому)
+    static let profileBarVerticalPadding: CGFloat = 14
+    /// «Редактировать анкету» и stat-pill: одна высота (как `.profile-account-btn` min-height 52px на вебе)
+    static let profileBarFixedHeight: CGFloat = 52
+
+    /// Горизонтальный отступ строк плана (`--space-4` у `.day-plan-mode-btn`)
+    static let exerciseRowPaddingH: CGFloat = 16
+    /// Ширина колонки иконки в строке упражнений
+    static let exerciseRowIconColumnWidth: CGFloat = 28
+    /// `HStack` spacing между иконкой и текстом
+    static let exerciseRowIconSpacing: CGFloat = 12
+    /// Заголовок / подзаголовок блока «Упражнения»: как `.nutrition-records-card__title` — `margin-inline-start: var(--space-4)` (внутренняя зона карточки после скругления)
+    static let exerciseSectionTitleLeading: CGFloat = exerciseRowPaddingH
+    /// Разделитель между строками: как `.day-workout-plan-card__divider`
+    static var exercisePlanDividerLeading: CGFloat {
+        exerciseRowPaddingH + exerciseRowIconColumnWidth + exerciseRowIconSpacing
+    }
+
     static let chipAthlete = (red: 0.78, green: 0.22, blue: 0.22)
     static let chipVip = (red: 0.95, green: 0.52, blue: 0.12)
     static let chipTelegram = (red: 0.20, green: 0.55, blue: 0.92)

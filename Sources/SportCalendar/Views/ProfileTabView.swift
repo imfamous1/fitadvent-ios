@@ -278,9 +278,9 @@ struct ProfileTabView: View {
     private func statPillButton(title: String, systemImage: String, badge: Int?, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             ZStack(alignment: .topTrailing) {
-                VStack(spacing: 6) {
+                VStack(spacing: 4) {
                     Image(systemName: systemImage)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(Color(red: ProfileChrome.accentBlue.red, green: ProfileChrome.accentBlue.green, blue: ProfileChrome.accentBlue.blue))
                     Text(title)
                         .font(.system(size: 11, weight: .semibold))
@@ -289,11 +289,10 @@ struct ProfileTabView: View {
                         .lineLimit(2)
                         .minimumScaleFactor(0.85)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity, minHeight: ProfileChrome.profileBarFixedHeight, maxHeight: ProfileChrome.profileBarFixedHeight, alignment: .center)
                 .padding(.horizontal, 6)
                 .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    RoundedRectangle(cornerRadius: ProfileChrome.radiusLg, style: .continuous)
                         .fill(Color(uiColor: .secondarySystemGroupedBackground))
                 )
                 if let badge, badge > 0 {
@@ -311,9 +310,9 @@ struct ProfileTabView: View {
     }
 
     private func statPillStatic(title: String, systemImage: String) -> some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 4) {
             Image(systemName: systemImage)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(.secondary)
             Text(title)
                 .font(.system(size: 11, weight: .semibold))
@@ -321,11 +320,10 @@ struct ProfileTabView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, minHeight: ProfileChrome.profileBarFixedHeight, maxHeight: ProfileChrome.profileBarFixedHeight, alignment: .center)
         .padding(.horizontal, 6)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: ProfileChrome.radiusLg, style: .continuous)
                 .fill(Color(uiColor: .tertiarySystemGroupedBackground))
         )
     }
@@ -342,11 +340,10 @@ struct ProfileTabView: View {
                 Text("Редактировать анкету")
                     .font(.body.weight(.semibold))
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
+            .frame(maxWidth: .infinity, minHeight: ProfileChrome.profileBarFixedHeight, maxHeight: ProfileChrome.profileBarFixedHeight, alignment: .center)
             .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue))
+                Capsule()
+                    .fill(Color(red: ProfileChrome.accentBlue.red, green: ProfileChrome.accentBlue.green, blue: ProfileChrome.accentBlue.blue))
             )
             .foregroundStyle(.white)
         }
@@ -356,22 +353,25 @@ struct ProfileTabView: View {
 
     private var exercisesBlock: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Упражнения")
-                .font(.title3.weight(.bold))
-            Text("Настрой свой план на месяц")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Упражнения")
+                    .font(.title3.weight(.bold))
+                Text("Настрой свой план на месяц")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
             VStack(spacing: 0) {
                 exerciseRow(icon: "calendar", title: "Текущий", trailing: "FitAdvent") {
                     activeSheet = .exerciseHint("Текущий месяц")
                 }
-                Divider().padding(.leading, 48)
+                Divider().padding(.leading, ProfileChrome.exercisePlanDividerLeading)
                 if isProgramVoteBannerDayNow() {
                     exerciseRow(icon: "calendar.badge.clock", title: "Следующий", trailing: nil) {
                         let t = programVoteNextMonthTarget()
                         activeSheet = .exerciseHint("Программа на \(t.month).\(t.year) — скоро здесь же, что и на сайте.")
                     }
-                    Divider().padding(.leading, 48)
+                    Divider().padding(.leading, ProfileChrome.exercisePlanDividerLeading)
                 }
                 exerciseRow(
                     icon: "person.fill",
@@ -388,7 +388,7 @@ struct ProfileTabView: View {
                 }
             }
             .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
                     .fill(Color(uiColor: .secondarySystemGroupedBackground))
             )
         }
@@ -403,11 +403,11 @@ struct ProfileTabView: View {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            HStack(spacing: 12) {
+            HStack(spacing: ProfileChrome.exerciseRowIconSpacing) {
                 Image(systemName: icon)
                     .font(.title3)
-                    .foregroundStyle(Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue))
-                    .frame(width: 28)
+                    .foregroundStyle(Color(red: ProfileChrome.accentBlue.red, green: ProfileChrome.accentBlue.green, blue: ProfileChrome.accentBlue.blue))
+                    .frame(width: ProfileChrome.exerciseRowIconColumnWidth)
                 Text(title)
                     .font(.body.weight(.medium))
                     .foregroundStyle(.primary)
@@ -423,31 +423,37 @@ struct ProfileTabView: View {
                         .foregroundStyle(.white)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 3)
-                        .background(Capsule().fill(Color.orange.opacity(0.9)))
+                        .background(
+                            Capsule()
+                                .fill(Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue))
+                        )
                 }
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.tertiary)
             }
-            .padding(14)
+            .padding(.vertical, 12)
+            .padding(.horizontal, ProfileChrome.exerciseRowPaddingH)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
 
     private var logoutBlock: some View {
-        Button(role: .destructive) {
+        Button {
             Task { await appState.logout() }
         } label: {
             Text("Выйти")
                 .font(.body.weight(.semibold))
+                .foregroundStyle(Color(red: ProfileChrome.error.red, green: ProfileChrome.error.green, blue: ProfileChrome.error.blue))
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
+                .padding(.vertical, ProfileChrome.profileBarVerticalPadding)
                 .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(Color.red.opacity(0.35), lineWidth: 1)
+                    Capsule()
+                        .fill(Color(red: ProfileChrome.activitySurface.red, green: ProfileChrome.activitySurface.green, blue: ProfileChrome.activitySurface.blue))
                 )
         }
+        .buttonStyle(.plain)
         .padding(.bottom, 8)
     }
 
@@ -639,7 +645,7 @@ private struct ProfileHealthSheet: View {
                         }
                         .padding()
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(RoundedRectangle(cornerRadius: 16).fill(Color(uiColor: .secondarySystemGroupedBackground)))
+                        .background(RoundedRectangle(cornerRadius: ProfileChrome.radiusXl).fill(Color(uiColor: .secondarySystemGroupedBackground)))
                     }
 
                     if let p = profile {
@@ -671,7 +677,7 @@ private struct ProfileHealthSheet: View {
                         }
                         .padding()
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(RoundedRectangle(cornerRadius: 16).fill(Color(uiColor: .secondarySystemGroupedBackground)))
+                        .background(RoundedRectangle(cornerRadius: ProfileChrome.radiusXl).fill(Color(uiColor: .secondarySystemGroupedBackground)))
                     }
                 }
                 .padding()

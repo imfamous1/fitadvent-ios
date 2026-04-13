@@ -139,7 +139,7 @@ struct CalendarTabView: View {
                 .padding()
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
                         .fill(Color(uiColor: .secondarySystemGroupedBackground))
                 )
             }
@@ -234,7 +234,7 @@ struct CalendarTabView: View {
                 .padding()
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
                         .fill(Color(uiColor: .secondarySystemGroupedBackground))
                 )
             }
@@ -260,7 +260,7 @@ struct CalendarTabView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                         .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            RoundedRectangle(cornerRadius: ProfileChrome.radiusLg, style: .continuous)
                                 .fill(Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue))
                         )
                         .foregroundStyle(.white)
