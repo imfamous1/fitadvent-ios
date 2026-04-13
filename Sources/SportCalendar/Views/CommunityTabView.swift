@@ -3,16 +3,16 @@ import SwiftUI
 struct CommunityTabView: View {
     @EnvironmentObject private var appState: AppState
     @State private var search = ""
-    @State private var filter: CommFilter = .all
+    @FocusState private var searchFocused: Bool
+    @State private var filter: CommunityScopeFilter = .all
     @State private var board: BoardAPIResponse?
-    @State private var boardCalendarId = ""
     @State private var loadingBoard = false
     @State private var boardError: String?
     @State private var actingKey: String?
 
-    private enum CommFilter: String, CaseIterable {
-        case all = "Все"
-        case favorites = "Избранное"
+    private var implicitBoardCalendarId: String {
+        let keys = (appState.bootstrap.map { Array($0.progress.keys) } ?? []).sorted()
+        return MoscowCalendar.defaultCalendarId(keys: keys)
     }
 
     var body: some View {
@@ -20,12 +20,14 @@ struct CommunityTabView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     TabMegaHeader(title: "Сообщество", subtitle: "Вдохновляйся друзьями и не только")
-                        .padding(.bottom, 12)
+                        .padding(.top, 8)
+                        .padding(.bottom, 20)
 
-                    searchField
-                    filterPicker
+                    communitySearchField
+                    CommunityScopeTabs(filter: $filter)
+                        .padding(.bottom, 16)
                     incomingRequests
-                    boardSection
+                    feedSection
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 28)
@@ -39,34 +41,51 @@ struct CommunityTabView: View {
                 await appState.refreshBootstrap()
                 await loadBoard()
             }
+            .navigationDestination(for: String.self) { key in
+                if let u = board?.users[key] {
+                    CommunityMemberProfileView(loginKey: key, user: u, boardCalendarId: implicitBoardCalendarId)
+                        .environmentObject(appState)
+                } else {
+                    Text("Не удалось открыть профиль.")
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
     }
 
-    private var searchField: some View {
-        HStack {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
-            TextField("Поиск по имени или логину", text: $search)
+    // MARK: - Поиск (как `.comm-search` на вебе: 52pt, капсула, центр «Поиск»)
+
+    private var communitySearchField: some View {
+        let showCenteredChrome = search.isEmpty && !searchFocused
+        return ZStack {
+            TextField("", text: $search, prompt: Text(""))
+                .font(.body)
+                .multilineTextAlignment(showCenteredChrome ? .center : .leading)
+                .focused($searchFocused)
+                .frame(minHeight: ProfileChrome.profileBarFixedHeight, maxHeight: ProfileChrome.profileBarFixedHeight)
+                .padding(.horizontal, 16)
+                .accessibilityLabel("Поиск по имени или логину")
             #if os(iOS)
                 .textInputAutocapitalization(.never)
             #endif
-        }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: ProfileChrome.radiusLg, style: .continuous)
-                .fill(Color(uiColor: .secondarySystemGroupedBackground))
-        )
-        .padding(.bottom, 12)
-    }
 
-    private var filterPicker: some View {
-        Picker("Фильтр", selection: $filter) {
-            ForEach(CommFilter.allCases, id: \.self) { f in
-                Text(f.rawValue).tag(f)
+            if showCenteredChrome {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(.secondary)
+                    Text("Поиск")
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+                .allowsHitTesting(false)
             }
         }
-        .pickerStyle(.segmented)
-        .padding(.bottom, 16)
+        .background(
+            Capsule()
+                .fill(Color(uiColor: .tertiarySystemGroupedBackground))
+        )
+        .padding(.bottom, 12)
     }
 
     @ViewBuilder
@@ -113,34 +132,15 @@ struct CommunityTabView: View {
         }
     }
 
-    private var boardCalendarOptions: [String] {
-        let keys = (appState.bootstrap.map { Array($0.progress.keys) } ?? []).sorted()
-        var opts = Set(keys)
-        opts.insert(MoscowCalendar.defaultCalendarId(keys: keys))
-        opts.insert(boardCalendarId)
-        return opts.sorted()
-    }
-
-    private var boardSection: some View {
+    private var feedSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Календарь ленты")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Picker("Календарь", selection: $boardCalendarId) {
-                ForEach(boardCalendarOptions, id: \.self) { id in
-                    Text(id).tag(id)
-                }
-            }
-            .pickerStyle(.menu)
-            .onChange(of: boardCalendarId) { _, _ in Task { await loadBoard() } }
-            HStack {
-                Text("Лента")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                Spacer()
-                if loadingBoard {
+            if loadingBoard {
+                HStack {
+                    Spacer()
                     ProgressView()
+                    Spacer()
                 }
+                .padding(.vertical, 8)
             }
             if let boardError {
                 Text(boardError)
@@ -149,57 +149,72 @@ struct CommunityTabView: View {
             }
             let rows = filteredRows()
             if rows.isEmpty && !loadingBoard {
-                Text(search.isEmpty ? "Пока никого нет в ленте для выбранного календаря." : "Никого не найдено.")
+                Text(search.isEmpty ? "Пока никого нет в ленте." : "Никого не найдено.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
             ForEach(rows, id: \.key) { row in
-                communityRow(row)
+                NavigationLink(value: row.key) {
+                    communityRow(row)
+                }
+                .buttonStyle(.plain)
             }
         }
     }
 
     private func communityRow(_ row: (key: String, user: BoardUserPublic)) -> some View {
-        let fav = appState.bootstrap?.favoriteLoginKeys.contains(row.key) == true
-        let liked = row.user.likedByMe == true
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 12) {
-                avatar(url: row.user.avatarUrl ?? "", vip: row.user.vipActive == true)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(row.user.displayName ?? row.user.login ?? row.key)
-                        .font(.body.weight(.semibold))
-                    HStack(spacing: 8) {
-                        if let lvl = row.user.athleteLevel {
-                            Text("Ур. \(lvl)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+        let selfKey = appState.bootstrap.map { CommunityLoginKey.from(login: $0.user.login) }
+        let isSelf = selfKey == row.key
+        let proofs = CommunityProofsMerge.mergedProofs(
+            server: row.user.communityProofs,
+            bootstrap: appState.bootstrap,
+            loginKey: row.key,
+            selfLoginKey: selfKey
+        )
+        let thumbs = Array(proofs.prefix(4))
+        let workouts = max(0, row.user.totalWorkoutsLifetime ?? 0)
+
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
+                HStack(alignment: .top, spacing: 12) {
+                    avatar(url: row.user.avatarUrl ?? "", vip: row.user.vipActive == true)
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Text(row.user.displayName ?? row.user.login ?? row.key)
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(.primary)
+                            if isSelf {
+                                Text("(вы)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
-                        if let tw = row.user.totalWorkoutsLifetime {
-                            Text("· \(tw) трен.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+                        Text("Всего тренировок: \(workouts)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(RussianCommunityCopy.respectPhrase(count: row.user.likeCount ?? 0))
+                            .font(.caption2)
+                            .foregroundStyle(Color(red: ProfileChrome.accentBlue.red, green: ProfileChrome.accentBlue.green, blue: ProfileChrome.accentBlue.blue))
                     }
-                    Text("\(row.user.likeCount ?? 0) респектов")
-                        .font(.caption2)
-                        .foregroundStyle(Color(red: ProfileChrome.accentBlue.red, green: ProfileChrome.accentBlue.green, blue: ProfileChrome.accentBlue.blue))
                 }
-                Spacer()
-                VStack(spacing: 8) {
+                Spacer(minLength: 8)
+                if !isSelf {
                     Button {
-                        Task { await toggleFavorite(key: row.key, isFav: fav) }
+                        Task { await toggleLike(key: row.key) }
                     } label: {
-                        Image(systemName: fav ? "star.fill" : "star")
-                            .foregroundStyle(fav ? .yellow : .secondary)
+                        Image(systemName: row.user.likedByMe == true ? "hand.thumbsup.fill" : "hand.thumbsup")
+                            .font(.title3)
+                            .foregroundStyle(row.user.likedByMe == true ? Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue) : .secondary)
                     }
                     .disabled(actingKey != nil)
-                    Button {
-                        Task { await toggleLike(key: row.key, liked: liked) }
-                    } label: {
-                        Image(systemName: liked ? "hand.thumbsup.fill" : "hand.thumbsup")
-                            .foregroundStyle(liked ? Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue) : .secondary)
+                    .buttonStyle(.plain)
+                }
+            }
+            if !thumbs.isEmpty {
+                HStack(spacing: 6) {
+                    ForEach(thumbs) { p in
+                        proofSlotThumb(p)
                     }
-                    .disabled(actingKey != nil)
                 }
             }
         }
@@ -210,6 +225,34 @@ struct CommunityTabView: View {
                 .fill(Color(uiColor: .secondarySystemGroupedBackground))
         )
         .padding(.bottom, 8)
+    }
+
+    private func proofSlotThumb(_ proof: CommunityProofItem) -> some View {
+        Group {
+            if let s = proof.proofUrl, let u = URL(string: s) {
+                if proof.isVideo {
+                    ZStack {
+                        Color.black.opacity(0.12)
+                        Image(systemName: "play.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    AsyncImage(url: u) { phase in
+                        switch phase {
+                        case .success(let img):
+                            img.resizable().scaledToFill()
+                        default:
+                            Color(uiColor: .tertiarySystemFill)
+                        }
+                    }
+                }
+            } else {
+                Color(uiColor: .tertiarySystemFill)
+            }
+        }
+        .frame(width: 56, height: 56)
+        .clipped()
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
     private func avatar(url: String, vip: Bool) -> some View {
@@ -240,11 +283,25 @@ struct CommunityTabView: View {
     private func filteredRows() -> [(key: String, user: BoardUserPublic)] {
         guard let users = board?.users else { return [] }
         let fav = Set(appState.bootstrap?.favoriteLoginKeys ?? [])
+        let incomingKeys = Set((appState.bootstrap?.friendRequests.incoming ?? []).map(\.loginKey))
+        let sessionKey = appState.bootstrap.map { CommunityLoginKey.from(login: $0.user.login) } ?? ""
         let q = search.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
         var out: [(key: String, user: BoardUserPublic)] = users.map { (key: $0.key, user: $0.value) }
-        if filter == .favorites {
+
+        switch filter {
+        case .friends:
             out = out.filter { fav.contains($0.key) }
+        case .all:
+            out = out.filter { !incomingKeys.contains($0.key) }
         }
+
+        if q.isEmpty, filter == .all {
+            out = out.filter { pair in
+                pair.user.showInCommunityList != false || (!sessionKey.isEmpty && pair.key == sessionKey)
+            }
+        }
+
         if !q.isEmpty {
             out = out.filter { pair in
                 let name = (pair.user.displayName ?? "").lowercased()
@@ -253,21 +310,17 @@ struct CommunityTabView: View {
                 return name.contains(q) || login.contains(q) || key.contains(q)
             }
         }
-        out.sort { a, b in
-            let na = a.user.displayName ?? a.key
-            let nb = b.user.displayName ?? b.key
-            return na.localizedCaseInsensitiveCompare(nb) == .orderedAscending
-        }
+
+        out = CommunityFeedOrdering.leaderboardSort(rows: out)
+        out = CommunityFeedOrdering.selfFirst(rows: out, selfLogin: appState.bootstrap?.user.login)
         return out
     }
 
     private func loadBoard() async {
-        let keys = (appState.bootstrap.map { Array($0.progress.keys) } ?? []).sorted()
-        let cal = boardCalendarId.isEmpty ? MoscowCalendar.defaultCalendarId(keys: keys) : boardCalendarId
-        if boardCalendarId.isEmpty { boardCalendarId = cal }
         loadingBoard = true
         boardError = nil
         defer { loadingBoard = false }
+        let cal = implicitBoardCalendarId
         do {
             board = try await APIClient.shared.fetchBoardDecoded(calendarId: cal)
         } catch let e as APIClientError {
@@ -299,21 +352,7 @@ struct CommunityTabView: View {
         } catch {}
     }
 
-    private func toggleFavorite(key: String, isFav: Bool) async {
-        actingKey = key
-        defer { actingKey = nil }
-        do {
-            if isFav {
-                try await APIClient.shared.deleteFavorite(loginKey: key)
-            } else {
-                try await APIClient.shared.postFavorite(loginKey: key)
-            }
-            await appState.refreshBootstrap()
-            await loadBoard()
-        } catch {}
-    }
-
-    private func toggleLike(key: String, liked: Bool) async {
+    private func toggleLike(key: String) async {
         actingKey = key
         defer { actingKey = nil }
         do {

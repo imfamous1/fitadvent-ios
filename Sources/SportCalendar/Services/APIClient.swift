@@ -316,11 +316,23 @@ actor APIClient {
         return try jsonAny(data: data, http: http)
     }
 
+    func getProofCommentsDecoded(ownerLoginKey: String, calendarId: String, day: String, limit: Int?, beforeId: Int?) async throws -> ProofCommentsResponse {
+        let any = try await getProofComments(ownerLoginKey: ownerLoginKey, calendarId: calendarId, day: day, limit: limit, beforeId: beforeId)
+        let data = try JSONSerialization.data(withJSONObject: any.value, options: [])
+        return try decoder.decode(ProofCommentsResponse.self, from: data)
+    }
+
     func postProofComment(ownerLoginKey: String, calendarId: String, day: String, body: String) async throws -> AnyCodableJSON {
         let path = proofPath(ownerLoginKey: ownerLoginKey, calendarId: calendarId, day: day) + "/comments"
         let data = try encoder.encode(ProofCommentBody(body: body))
         let (dataOut, http) = try await jsonRequest(path, method: "POST", body: data, auth: true)
         return try jsonAny(data: dataOut, http: http)
+    }
+
+    func postProofCommentDecoded(ownerLoginKey: String, calendarId: String, day: String, body: String) async throws -> ProofCommentPostResponse {
+        let any = try await postProofComment(ownerLoginKey: ownerLoginKey, calendarId: calendarId, day: day, body: body)
+        let data = try JSONSerialization.data(withJSONObject: any.value, options: [])
+        return try decoder.decode(ProofCommentPostResponse.self, from: data)
     }
 
     private func proofPath(ownerLoginKey: String, calendarId: String, day: String) -> String {
@@ -531,6 +543,27 @@ struct ProofLikeResponse: Decodable {
     var ok: Bool?
     var likeCount: Int?
     var likedByMe: Bool?
+}
+
+struct ProofCommentItem: Decodable, Sendable, Identifiable {
+    var id: Int
+    var body: String
+    var createdAt: String
+    var authorLoginKey: String
+    var authorDisplayName: String
+    var authorAvatarUrl: String
+}
+
+struct ProofCommentsResponse: Decodable, Sendable {
+    var comments: [ProofCommentItem]
+    var nextBeforeId: Int?
+    var hasMore: Bool?
+}
+
+struct ProofCommentPostResponse: Decodable, Sendable {
+    var ok: Bool?
+    var commentCount: Int?
+    var comment: ProofCommentItem?
 }
 
 /// Обёртка над `JSONSerialization` для ответов без жёсткой схемы (доска, питание, слова).

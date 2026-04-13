@@ -7,6 +7,21 @@ struct BoardAPIResponse: Decodable, Sendable {
     var updatedAt: String?
 }
 
+struct BoardMonthProgram: Decodable, Sendable {
+    var exerciseIds: [String]?
+    var level: String?
+}
+
+struct BoardProgressDay: Decodable, Sendable {
+    var done: Bool?
+    var doneAt: String?
+    var proofUrl: String?
+    var proofType: String?
+    var proofCaption: String?
+    var tasksDone: [Bool]?
+    var completedExerciseAmounts: [String: Double]?
+}
+
 struct BoardUserPublic: Decodable, Sendable {
     var login: String?
     var displayName: String?
@@ -16,6 +31,16 @@ struct BoardUserPublic: Decodable, Sendable {
     var likeCount: Int?
     var likedByMe: Bool?
     var vipActive: Bool?
+    var bonusXp: Int?
+    var shareBodyStats: Bool?
+    var shareProofsLarge: Bool?
+    var showInCommunityList: Bool?
+    var heightCm: String?
+    var weightKg: String?
+    var calendarId: String?
+    var days: [String: BoardProgressDay]?
+    var communityProofs: [CommunityProofItem]?
+    var monthProgram: BoardMonthProgram?
 }
 
 // MARK: - Питание (`GET /api/me/nutrition`)

@@ -19,6 +19,9 @@
 		B81D215E1C044506883A3498 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC8CB7C6538C4595984BCB97 /* AuthView.swift */; };
 		92AE2C9A9EDB42DF8B2B24A3 /* CalendarTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CBC0D7E70974991AA5F62C6 /* CalendarTabView.swift */; };
 		FBB22F77F72F4A70AC6B5278 /* CommunityTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5C872DA834C4A95922778A7 /* CommunityTabView.swift */; };
+		AB01CDEF0001000000010002 /* CommunityHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB01CDEF0001000000010001 /* CommunityHelpers.swift */; };
+		AB01CDEF0001000000010004 /* CommunityMemberProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB01CDEF0001000000010003 /* CommunityMemberProfileView.swift */; };
+		AB01CDEF0001000000010006 /* CommunityScopeTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB01CDEF0001000000010005 /* CommunityScopeTabs.swift */; };
 		41429790D446415C822566A3 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3084B75FFCA84234B46AEB4B /* MainTabView.swift */; };
 		255FCFCCD2364273AC9DD3F1 /* NutritionTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38EADDFE3F9949108C06CE69 /* NutritionTabView.swift */; };
 		8F9523E2DD1C4F328DE384CF /* ProfileTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3F0EE245F624A66BEE06DD6 /* ProfileTabView.swift */; };
@@ -45,6 +48,9 @@
 		DC8CB7C6538C4595984BCB97 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/AuthView.swift; sourceTree = "<group>"; };
 		5CBC0D7E70974991AA5F62C6 /* CalendarTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/CalendarTabView.swift; sourceTree = "<group>"; };
 		D5C872DA834C4A95922778A7 /* CommunityTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/CommunityTabView.swift; sourceTree = "<group>"; };
+		AB01CDEF0001000000010001 /* CommunityHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/CommunityHelpers.swift; sourceTree = "<group>"; };
+		AB01CDEF0001000000010003 /* CommunityMemberProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/CommunityMemberProfileView.swift; sourceTree = "<group>"; };
+		AB01CDEF0001000000010005 /* CommunityScopeTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/CommunityScopeTabs.swift; sourceTree = "<group>"; };
 		3084B75FFCA84234B46AEB4B /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/MainTabView.swift; sourceTree = "<group>"; };
 		38EADDFE3F9949108C06CE69 /* NutritionTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/NutritionTabView.swift; sourceTree = "<group>"; };
 		A3F0EE245F624A66BEE06DD6 /* ProfileTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/ProfileTabView.swift; sourceTree = "<group>"; };
@@ -83,6 +89,7 @@
 				430B4DD5C17C4B33AC6D9B30 /* SportCalendarApp.swift */,
 				5C699CE0D58F4077B61A16A0 /* APIConfig.swift */,
 				C9B22D3ADB0D410382C37A9F /* BootstrapModels.swift */,
+				AB01CDEF0001000000010001 /* CommunityHelpers.swift */,
 				2D3E4F5061728394A5B6C7D8E9 /* TabExtrasModels.swift */,
 				CD43C7A7FC80469A8272E678 /* APIClient.swift */,
 				A1B2C3D4E5F64748394A5B6C0 /* WorkoutHistoryReport.swift */,
@@ -93,6 +100,8 @@
 				DC8CB7C6538C4595984BCB97 /* AuthView.swift */,
 				5CBC0D7E70974991AA5F62C6 /* CalendarTabView.swift */,
 				D5C872DA834C4A95922778A7 /* CommunityTabView.swift */,
+				AB01CDEF0001000000010003 /* CommunityMemberProfileView.swift */,
+				AB01CDEF0001000000010005 /* CommunityScopeTabs.swift */,
 				3084B75FFCA84234B46AEB4B /* MainTabView.swift */,
 				38EADDFE3F9949108C06CE69 /* NutritionTabView.swift */,
 				A3F0EE245F624A66BEE06DD6 /* ProfileTabView.swift */,
@@ -197,6 +206,9 @@
 				B81D215E1C044506883A3498 /* AuthView.swift in Sources */,
 				92AE2C9A9EDB42DF8B2B24A3 /* CalendarTabView.swift in Sources */,
 				FBB22F77F72F4A70AC6B5278 /* CommunityTabView.swift in Sources */,
+				AB01CDEF0001000000010002 /* CommunityHelpers.swift in Sources */,
+				AB01CDEF0001000000010004 /* CommunityMemberProfileView.swift in Sources */,
+				AB01CDEF0001000000010006 /* CommunityScopeTabs.swift in Sources */,
 				41429790D446415C822566A3 /* MainTabView.swift in Sources */,
 				255FCFCCD2364273AC9DD3F1 /* NutritionTabView.swift in Sources */,
 				8F9523E2DD1C4F328DE384CF /* ProfileTabView.swift in Sources */,
