@@ -50,6 +50,21 @@ enum MoscowCalendar {
         return "\(names[m - 1]) \(y)"
     }
 
+    /// «2026-04» → «в апреле 2026» (предложный падеж и год — для фраз вроде «тренировочные дни в …»).
+    static func monthInPrepositionalWithYear(calendarId: String) -> String {
+        let parts = calendarId.split(separator: "-")
+        guard parts.count >= 2,
+              let y = Int(parts[0]),
+              let m = Int(parts[1]), m >= 1, m <= 12 else {
+            return "в \(calendarId)"
+        }
+        let prep = [
+            "январе", "феврале", "марте", "апреле", "мае", "июне",
+            "июле", "августе", "сентябре", "октябре", "ноябре", "декабре",
+        ]
+        return "в \(prep[m - 1]) \(y)"
+    }
+
     static func defaultCalendarId(keys: [String]) -> String {
         if let first = keys.sorted().first { return first }
         var cal = Calendar(identifier: .gregorian)

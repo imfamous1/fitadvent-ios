@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 // MARK: - Стилистика (согласовано с sport-calendar-web)
 
@@ -36,6 +37,39 @@ enum ProfileChrome {
     static let chipAthlete = (red: 0.78, green: 0.22, blue: 0.22)
     static let chipVip = (red: 0.95, green: 0.52, blue: 0.12)
     static let chipTelegram = (red: 0.20, green: 0.55, blue: 0.92)
+
+    /// Одна заливка для карточек и поля поиска на фоне `systemGroupedBackground` (светлая и тёмная тема).
+    static let groupedContentSurface = Color(uiColor: .secondarySystemGroupedBackground)
+    /// Дорожка сегментов — чуть ниже по «возвышению», чем `groupedContentSurface`, чтобы плашка выбора читалась.
+    static let groupedSegmentTrack = Color(uiColor: .tertiarySystemGroupedBackground)
+
+    /// Обводка сегментов «Все / Друзья» на `systemGroupedBackground`.
+    static let groupedControlOutline = Color.primary.opacity(0.11)
+
+    // MARK: - Бейджи на экране профиля сообщества (`systemGroupedBackground`)
+
+    /// Заливка капсул (премиум, респекты, чипы программы): в светлой теме `Material` почти не отделяется от фона.
+    static func communityProfilePillFill(colorScheme: ColorScheme) -> Color {
+        switch colorScheme {
+        case .light:
+            return Color(uiColor: .systemBackground)
+        case .dark:
+            return Color(uiColor: .secondarySystemGroupedBackground)
+        @unknown default:
+            return Color(uiColor: .secondarySystemGroupedBackground)
+        }
+    }
+
+    static func communityProfilePillOutline(colorScheme: ColorScheme) -> Color {
+        switch colorScheme {
+        case .light:
+            return Color.primary.opacity(0.12)
+        case .dark:
+            return Color.white.opacity(0.14)
+        @unknown default:
+            return Color.white.opacity(0.14)
+        }
+    }
 }
 
 // MARK: - Даты и VIP

@@ -10,6 +10,7 @@ private struct CommunityProofLightboxRoute: Identifiable {
 struct CommunityMemberProfileView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
 
     let loginKey: String
     let user: BoardUserPublic
@@ -63,8 +64,7 @@ struct CommunityMemberProfileView: View {
     }
 
     private var monthProgressPhrase: String {
-        let title = MoscowCalendar.monthTitle(calendarId: boardCalendarId)
-        return "в \(title.lowercased())"
+        MoscowCalendar.monthInPrepositionalWithYear(calendarId: boardCalendarId)
     }
 
     var body: some View {
@@ -172,15 +172,46 @@ struct CommunityMemberProfileView: View {
                 }
                 HStack(spacing: 8) {
                     if user.vipActive == true {
-                        Text("Премиум")
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color.orange.opacity(0.2), in: Capsule())
+                        HStack(spacing: 4) {
+                            Image(systemName: "crown.fill")
+                                .font(.caption2.weight(.bold))
+                            Text("Премиум")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [
+                                    Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue),
+                                    Color(red: ProfileChrome.chipVip.red, green: ProfileChrome.chipVip.green, blue: ProfileChrome.chipVip.blue),
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(ProfileChrome.communityProfilePillFill(colorScheme: colorScheme))
+                        )
+                        .overlay(
+                            Capsule(style: .continuous)
+                                .strokeBorder(ProfileChrome.communityProfilePillOutline(colorScheme: colorScheme), lineWidth: 1)
+                        )
                     }
                     Text(RussianCommunityCopy.respectPhrase(count: user.likeCount ?? 0))
-                        .font(.caption.weight(.medium))
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(Color(red: ProfileChrome.accentBlue.red, green: ProfileChrome.accentBlue.green, blue: ProfileChrome.accentBlue.blue))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(ProfileChrome.communityProfilePillFill(colorScheme: colorScheme))
+                        )
+                        .overlay(
+                            Capsule(style: .continuous)
+                                .strokeBorder(ProfileChrome.communityProfilePillOutline(colorScheme: colorScheme), lineWidth: 1)
+                        )
                 }
             }
             Spacer(minLength: 0)
@@ -204,44 +235,47 @@ struct CommunityMemberProfileView: View {
             )
             return (snap.level, snap.xpIntoLevel, snap.xpSpanThisLevel, snap.progressPct)
         }()
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Опыт и прогресс уровня")
-                .font(.subheadline.weight(.semibold))
-            Text("Уровень \(gam.level) — \(athleteLevelLabel(level: gam.level))")
-                .font(.body.weight(.medium))
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color(uiColor: .tertiarySystemFill))
-                    Capsule()
-                        .fill(Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue))
-                        .frame(width: max(8, geo.size.width * CGFloat(gam.pct)))
+        VStack(alignment: .leading, spacing: 8) {
+            communitySectionHeaderTitle("Опыт и прогресс уровня")
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Уровень \(gam.level) — \(athleteLevelLabel(level: gam.level))")
+                    .font(.body.weight(.medium))
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(Color(uiColor: .tertiarySystemFill))
+                        Capsule()
+                            .fill(Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue))
+                            .frame(width: max(8, geo.size.width * CGFloat(gam.pct)))
+                    }
                 }
+                .frame(height: 10)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Опыт в текущем уровне")
+                .accessibilityValue("\(gam.into) из \(gam.span)")
             }
-            .frame(height: 10)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Опыт в текущем уровне")
-            .accessibilityValue("\(gam.into) из \(gam.span)")
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
+                    .fill(Color(uiColor: .secondarySystemGroupedBackground))
+            )
         }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
-                .fill(Color(uiColor: .secondarySystemGroupedBackground))
-        )
     }
 
     private var proofsSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
                 Text("Фото тренировок")
-                    .font(.subheadline.weight(.semibold))
+                    .font(.headline.weight(.bold))
                 if !mergedProofs.isEmpty {
                     Text("· \(mergedProofs.count)")
-                        .font(.subheadline)
+                        .font(.subheadline.weight(.medium))
                         .foregroundStyle(.secondary)
                 }
+                Spacer(minLength: 0)
             }
+            .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
             if mergedProofs.isEmpty {
                 Text("Пока нет загруженных фото к дням.")
                     .font(.caption)
@@ -294,9 +328,11 @@ struct CommunityMemberProfileView: View {
 
     private var monthProgressSection: some View {
         let pct = monthDaysTotal > 0 ? min(1, Double(monthWorkoutCount) / Double(monthDaysTotal)) : 0
-        return VStack(alignment: .leading, spacing: 10) {
+        return VStack(alignment: .leading, spacing: 8) {
             Text("Тренировочные дни \(monthProgressPhrase)")
-                .font(.subheadline.weight(.semibold))
+                .font(.headline.weight(.bold))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule().fill(Color(uiColor: .tertiarySystemFill))
@@ -306,31 +342,109 @@ struct CommunityMemberProfileView: View {
                 }
             }
             .frame(height: 10)
-            Text("\(monthWorkoutCount) из \(monthDaysTotal) дней с тренировкой")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
+                    .fill(Color(uiColor: .secondarySystemGroupedBackground))
+            )
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Тренировочные дни \(monthProgressPhrase)")
+            .accessibilityValue("\(monthWorkoutCount) из \(monthDaysTotal)")
         }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
-                .fill(Color(uiColor: .secondarySystemGroupedBackground))
-        )
     }
 
     @ViewBuilder
     private var programSection: some View {
-        if let mp = user.monthProgram, mp.exerciseIds?.isEmpty == false || mp.level != nil {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Программа месяца")
-                    .font(.subheadline.weight(.semibold))
-                if let lvl = mp.level {
-                    Text("Уровень: \(lvl)")
-                        .font(.caption)
+        if let mp = user.monthProgram {
+            let ids = mp.exerciseIds ?? []
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Программа месяца")
+                        .font(.headline.weight(.bold))
+                    Spacer(minLength: 8)
+                    Text(programDifficultyTitle(mp.level))
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)
                 }
-                if let n = mp.exerciseIds?.count, n > 0 {
-                    Text("Упражнений в программе: \(n)")
+                .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
+
+                if ids.isEmpty {
+                    Text("Выбор упражнений на этот месяц не сохранён или не синхронизирован с сервером.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    HStack(spacing: 8) {
+                        if mp.isIndividual == true {
+                            programKindCapsule("Индивидуальный")
+                        } else if mp.fromSavedVote == false {
+                            programKindCapsule("Базовый план")
+                        }
+                        Spacer(minLength: 0)
+                    }
+
+                    LazyVGrid(
+                        columns: [GridItem(.adaptive(minimum: 100), spacing: 8, alignment: .leading)],
+                        alignment: .leading,
+                        spacing: 8
+                    ) {
+                        ForEach(ids, id: \.self) { exId in
+                            let label = WorkoutHistoryReportBuilder.labelForBoardProgramExercise(
+                                exId,
+                                customLabels: mp.customExerciseLabels
+                            )
+                            Text(label)
+                                .font(.caption.weight(.medium))
+                                .lineLimit(2)
+                                .multilineTextAlignment(.center)
+                                .frame(maxWidth: .infinity)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 8)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .fill(ProfileChrome.communityProfilePillFill(colorScheme: colorScheme))
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .strokeBorder(ProfileChrome.communityProfilePillOutline(colorScheme: colorScheme), lineWidth: 1)
+                                )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var anketaSection: some View {
+        let h = (user.heightCm ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let w = (user.weightKg ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        VStack(alignment: .leading, spacing: 8) {
+            communitySectionHeaderTitle("Анкета")
+            VStack(alignment: .leading, spacing: 10) {
+                if canShowBody {
+                    if h.isEmpty && w.isEmpty {
+                        Text("Рост и вес в профиле не указаны.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        HStack(spacing: 16) {
+                            if !h.isEmpty {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Рост").font(.caption).foregroundStyle(.secondary)
+                                    Text("\(h) см").font(.body.weight(.medium))
+                                }
+                            }
+                            if !w.isEmpty {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Вес").font(.caption).foregroundStyle(.secondary)
+                                    Text("\(w) кг").font(.body.weight(.medium))
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Text("Участник не показывает рост и вес незнакомым пользователям.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -344,50 +458,35 @@ struct CommunityMemberProfileView: View {
         }
     }
 
-    @ViewBuilder
-    private var anketaSection: some View {
-        let h = (user.heightCm ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        let w = (user.weightKg ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Анкета")
-                .font(.subheadline.weight(.semibold))
-            if canShowBody {
-                if h.isEmpty && w.isEmpty, !isSelf {
-                    Text("Рост и вес в профиле не указаны.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else if h.isEmpty && w.isEmpty, isSelf {
-                    Text("Рост и вес в профиле не указаны.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else {
-                    HStack(spacing: 16) {
-                        if !h.isEmpty {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Рост").font(.caption).foregroundStyle(.secondary)
-                                Text("\(h) см").font(.body.weight(.medium))
-                            }
-                        }
-                        if !w.isEmpty {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Вес").font(.caption).foregroundStyle(.secondary)
-                                Text("\(w) кг").font(.body.weight(.medium))
-                            }
-                        }
-                    }
-                }
-            } else {
-                Text("Участник не показывает рост и вес незнакомым пользователям.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+    private func communitySectionHeaderTitle(_ title: String) -> some View {
+        Text(title)
+            .font(.headline.weight(.bold))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
+    }
+
+    private func programDifficultyTitle(_ raw: String?) -> String {
+        let lid = String(raw ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        switch lid {
+        case "beginner": return "Начинающий"
+        case "advanced": return "Продвинутый"
+        default: return "Средний"
         }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
-                .fill(Color(uiColor: .secondarySystemGroupedBackground))
-        )
+    }
+
+    private func programKindCapsule(_ title: String) -> some View {
+        Text(title)
+            .font(.caption2.weight(.semibold))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(ProfileChrome.communityProfilePillFill(colorScheme: colorScheme))
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .strokeBorder(ProfileChrome.communityProfilePillOutline(colorScheme: colorScheme), lineWidth: 1)
+            )
     }
 
     private func communityAvatar(url: String, vip: Bool, size: CGFloat) -> some View {

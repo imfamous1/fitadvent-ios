@@ -10,6 +10,12 @@ struct BoardAPIResponse: Decodable, Sendable {
 struct BoardMonthProgram: Decodable, Sendable {
     var exerciseIds: [String]?
     var level: String?
+    /// Все id упражнений в выборе — пользовательские (`u_*`), программа из своих упражнений.
+    var isIndividual: Bool?
+    /// `false` — подставлен шаблон месяца (нет сохранённого голоса); `true` — строка в `program_votes`.
+    var fromSavedVote: Bool?
+    /// Подписи для `u_*` на доске (как `customExercises` в голосовании).
+    var customExerciseLabels: [String: String]?
 }
 
 struct BoardProgressDay: Decodable, Sendable {

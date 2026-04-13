@@ -622,6 +622,15 @@ enum WorkoutHistoryReportBuilder {
         return key
     }
 
+    /// Подпись упражнения в `monthProgram` доски сообщества.
+    static func labelForBoardProgramExercise(_ exerciseId: String, customLabels: [String: String]?) -> String {
+        if let raw = customLabels?[exerciseId] {
+            let t = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !t.isEmpty { return t }
+        }
+        return exerciseKeyLabel(exerciseId, vote: nil)
+    }
+
     private static func formatExerciseStatValue(_ key: String, _ n: Double, vote: ProgramVoteRecord?) -> String {
         let safe = n.isFinite ? n : 0
         let ru = Locale(identifier: "ru_RU")

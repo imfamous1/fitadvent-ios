@@ -83,7 +83,7 @@ struct CommunityTabView: View {
         }
         .background(
             Capsule()
-                .fill(Color(uiColor: .tertiarySystemGroupedBackground))
+                .fill(ProfileChrome.groupedContentSurface)
         )
         .padding(.bottom, 12)
     }
@@ -126,7 +126,7 @@ struct CommunityTabView: View {
             .padding()
             .background(
                 RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
-                    .fill(Color(uiColor: .secondarySystemGroupedBackground))
+                    .fill(ProfileChrome.groupedContentSurface)
             )
             .padding(.bottom, 16)
         }
@@ -222,7 +222,7 @@ struct CommunityTabView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
-                .fill(Color(uiColor: .secondarySystemGroupedBackground))
+                .fill(ProfileChrome.groupedContentSurface)
         )
         .padding(.bottom, 8)
     }

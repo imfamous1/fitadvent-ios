@@ -19,10 +19,10 @@ struct CommunityScopeTabs: View {
 
             ZStack(alignment: .topLeading) {
                 Capsule()
-                    .fill(Color(uiColor: .tertiarySystemGroupedBackground))
+                    .fill(ProfileChrome.groupedSegmentTrack)
 
                 Capsule()
-                    .fill(Color(uiColor: .secondarySystemGroupedBackground))
+                    .fill(ProfileChrome.groupedContentSurface)
                     .frame(width: pillW, height: pillH)
                     .offset(x: inset + idx * segmentW, y: inset)
                     .animation(.spring(response: 0.32, dampingFraction: 0.84), value: filter)
@@ -42,6 +42,11 @@ struct CommunityScopeTabs: View {
                     }
                 }
             }
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .strokeBorder(ProfileChrome.groupedControlOutline, lineWidth: 1)
+            )
         }
         .frame(height: ProfileChrome.profileBarFixedHeight)
         .accessibilityElement(children: .contain)
