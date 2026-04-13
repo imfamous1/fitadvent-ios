@@ -56,7 +56,7 @@ struct ProfileTabView: View {
             } label: {
                 Image(systemName: "gearshape.fill")
                     .font(.title3)
-                    .foregroundStyle(Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue))
+                    .foregroundStyle(Color(red: ProfileChrome.accentBlue.red, green: ProfileChrome.accentBlue.green, blue: ProfileChrome.accentBlue.blue))
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
@@ -135,26 +135,9 @@ struct ProfileTabView: View {
             }
             .frame(width: 96, height: 96)
             .clipShape(Circle())
-            .overlay(
+            .overlay {
                 Circle()
-                    .stroke(Color(uiColor: .secondarySystemGroupedBackground), lineWidth: vip ? 0 : 3)
-            )
-            .background {
-                if vip {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.45, green: 0.35, blue: 0.85),
-                                    Color(red: 0.25, green: 0.55, blue: 0.75),
-                                    Color(red: 0.35, green: 0.45, blue: 0.65),
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 102, height: 102)
-                }
+                    .strokeBorder(avatarRingStyle(vip: vip), lineWidth: vip ? 3.5 : 2.5)
             }
             PhotosPicker(selection: $photoPickerItem, matching: .images) {
                 Image(systemName: "camera.fill")
@@ -162,10 +145,10 @@ struct ProfileTabView: View {
                     .foregroundStyle(.white)
                     .frame(width: 36, height: 36)
                     .background(
-                        Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue),
+                        Color(red: ProfileChrome.accentBlue.red, green: ProfileChrome.accentBlue.green, blue: ProfileChrome.accentBlue.blue),
                         in: Circle()
                     )
-                    .shadow(color: Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue).opacity(0.45), radius: 6, y: 2)
+                    .shadow(color: Color(red: ProfileChrome.accentBlue.red, green: ProfileChrome.accentBlue.green, blue: ProfileChrome.accentBlue.blue).opacity(0.45), radius: 6, y: 2)
             }
             .buttonStyle(.plain)
             .offset(x: 4, y: 4)
@@ -182,49 +165,87 @@ struct ProfileTabView: View {
         }
     }
 
-    @ViewBuilder
     private func metaChips(profile: UserProfile, vip: Bool) -> some View {
         let athlete = formatAthleteSince(profile.registeredAt)
         let vipDate = formatVipUntilDisplay(profile.vipUntil)
         let tgName = profile.telegramUsername?.trimmingCharacters(in: .whitespacesAndNewlines)
         let showTg = (tgName != nil && !(tgName?.isEmpty ?? true)) || profile.telegramUserId != nil
 
-        let hasAny = !athlete.isEmpty || (vip && !vipDate.isEmpty) || showTg
-        if hasAny {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 8)], alignment: .center, spacing: 8) {
-                if !athlete.isEmpty {
-                    metaChip(athlete, style: .athlete)
-                }
-                if vip, !vipDate.isEmpty {
-                    metaChip("Премиум до \(vipDate)", style: .vip)
-                }
-                if showTg {
-                    let tgText: String = {
-                        if let u = tgName, !u.isEmpty { return "@\(u)" }
-                        if let id = profile.telegramUserId { return String(id) }
-                        return ""
-                    }()
-                    HStack(spacing: 2) {
-                        Text("tg:")
-                            .fontWeight(.heavy)
-                        Text(tgText)
+        let tgText: String = {
+            if let u = tgName, !u.isEmpty { return "@\(u)" }
+            if let id = profile.telegramUserId { return String(id) }
+            return ""
+        }()
+
+        var chipKinds: [ProfileMetaChipKind] = []
+        if !athlete.isEmpty { chipKinds.append(.athlete(athlete)) }
+        if vip, !vipDate.isEmpty { chipKinds.append(.vip("Премиум до \(vipDate)")) }
+        if showTg, !tgText.isEmpty { chipKinds.append(.telegram(tgText)) }
+
+        let chipColumns = [
+            GridItem(.flexible(), spacing: 8),
+            GridItem(.flexible(), spacing: 8),
+        ]
+        return Group {
+            if !chipKinds.isEmpty {
+                LazyVGrid(columns: chipColumns, alignment: .center, spacing: 8) {
+                    ForEach(chipKinds) { kind in
+                        switch kind {
+                        case .athlete(let text):
+                            metaChip(text, style: .athlete)
+                        case .vip(let text):
+                            metaChip(text, style: .vip)
+                        case .telegram(let text):
+                            telegramMetaChip(text: text)
+                        }
                     }
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 4)
-                    .background(chipBackground(.telegram))
-                    .clipShape(Capsule())
                 }
+                .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private enum ProfileMetaChipKind: Identifiable {
+        case athlete(String)
+        case vip(String)
+        case telegram(String)
+
+        var id: String {
+            switch self {
+            case .athlete(let s): return "athlete:\(s)"
+            case .vip(let s): return "vip:\(s)"
+            case .telegram(let s): return "tg:\(s)"
+            }
         }
     }
 
     private enum ChipStyle { case athlete, vip, telegram }
 
+    private func telegramMetaChip(text: String) -> some View {
+        HStack(spacing: 2) {
+            Text("tg:")
+                .fontWeight(.heavy)
+                .layoutPriority(1)
+            Text(text)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .font(.caption.weight(.semibold))
+        .frame(maxWidth: .infinity)
+        .multilineTextAlignment(.center)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 4)
+        .background(chipBackground(.telegram))
+        .clipShape(Capsule())
+    }
+
     private func metaChip(_ text: String, style: ChipStyle) -> some View {
         Text(text)
             .font(.caption.weight(.semibold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
             .padding(.horizontal, 9)
             .padding(.vertical, 4)
             .background(chipBackground(style))
@@ -240,6 +261,20 @@ struct ProfileTabView: View {
         case .telegram:
             return Color(red: ProfileChrome.chipTelegram.red, green: ProfileChrome.chipTelegram.green, blue: ProfileChrome.chipTelegram.blue).opacity(0.12)
         }
+    }
+
+    private func avatarRingStyle(vip: Bool) -> AnyShapeStyle {
+        let blue = Color(red: ProfileChrome.accentBlue.red, green: ProfileChrome.accentBlue.green, blue: ProfileChrome.accentBlue.blue)
+        guard vip else {
+            return AnyShapeStyle(blue)
+        }
+        let o1 = Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue)
+        let o2 = Color(red: ProfileChrome.chipVip.red, green: ProfileChrome.chipVip.green, blue: ProfileChrome.chipVip.blue)
+        let gold = Color(red: 1.0, green: 0.84, blue: 0.35)
+        let amber = Color(red: 0.99, green: 0.58, blue: 0.18)
+        return AnyShapeStyle(
+            AngularGradient(colors: [o1, amber, gold, o2, o1], center: .center)
+        )
     }
 
     // MARK: - Стат-пиллы
