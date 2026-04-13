@@ -597,8 +597,9 @@ private struct ProfileSettingsSheet: View {
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage("appearanceOverride") private var appearanceOverride: String = ""
 
+    /// Как карточки в «Статистика» (`secondarySystemGroupedBackground` на `systemGroupedBackground`).
     private func rowBackground() -> some View {
-        Color(uiColor: .systemBackground)
+        Color(uiColor: .secondarySystemGroupedBackground)
     }
 
     private var nightModeIsOn: Bool {
@@ -653,7 +654,6 @@ private struct ProfileSettingsSheet: View {
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
-            .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("Настройки")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -669,6 +669,10 @@ private struct ProfileSettingsSheet: View {
                     .accessibilityLabel("Закрыть")
                 }
             }
+        }
+        .background {
+            Color(uiColor: .systemGroupedBackground)
+                .ignoresSafeArea()
         }
         .preferredColorScheme(storedPreferredScheme)
         .id(themeRefreshIdentity)
