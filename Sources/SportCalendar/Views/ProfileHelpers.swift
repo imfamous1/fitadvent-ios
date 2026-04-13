@@ -9,8 +9,6 @@ enum ProfileChrome {
     static let accentBlue = (red: 0.0, green: 139.0 / 255.0, blue: 1.0)
     /// Светлая тема: `--color-error` `#d94828` (текст «Выйти» как на вебе)
     static let error = (red: 217.0 / 255.0, green: 72.0 / 255.0, blue: 40.0 / 255.0)
-    /// `--btn-activity-surface` `#feffff` (фон кнопки выхода)
-    static let activitySurface = (red: 254.0 / 255.0, green: 255.0 / 255.0, blue: 255.0 / 255.0)
 
     /// `--radius-lg` / `.btn`
     static let radiusLg: CGFloat = 16

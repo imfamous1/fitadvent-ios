@@ -496,7 +496,7 @@ struct ProfileTabView: View {
                 .padding(.vertical, ProfileChrome.profileBarVerticalPadding)
                 .background(
                     Capsule()
-                        .fill(Color(red: ProfileChrome.activitySurface.red, green: ProfileChrome.activitySurface.green, blue: ProfileChrome.activitySurface.blue))
+                        .fill(Color(uiColor: .secondarySystemGroupedBackground))
                 )
         }
         .buttonStyle(.plain)
@@ -594,26 +594,84 @@ enum ProfileSheet: Identifiable {
 
 private struct ProfileSettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @AppStorage("appearanceOverride") private var appearanceOverride: String = ""
+
+    private func rowBackground() -> some View {
+        Color(uiColor: .systemBackground)
+    }
+
+    private var nightModeIsOn: Bool {
+        switch appearanceOverride {
+        case "dark": return true
+        case "light": return false
+        default: return colorScheme == .dark
+        }
+    }
+
+    private var nightModeBinding: Binding<Bool> {
+        Binding(
+            get: { nightModeIsOn },
+            set: { appearanceOverride = $0 ? "dark" : "light" }
+        )
+    }
+
+    /// Явная схема из настроек; совпадает с `AppRootView`. Нужна на самом листе: иначе `List`
+    /// в sheet иногда не перерисовывает системные цвета при переключении тумблера.
+    private var storedPreferredScheme: ColorScheme? {
+        switch appearanceOverride {
+        case "dark": return .dark
+        case "light": return .light
+        default: return nil
+        }
+    }
+
+    /// Меняем идентичность контейнера при смене эффективной темы — форсируем обновление фона/строк.
+    private var themeRefreshIdentity: String {
+        switch appearanceOverride {
+        case "dark": return "dark"
+        case "light": return "light"
+        default: return "sys-\(colorScheme == .dark ? "d" : "l")"
+        }
+    }
 
     var body: some View {
         NavigationStack {
             List {
                 Section {
                     Label("Уведомления", systemImage: "bell.fill")
-                    Label("Тема оформления", systemImage: "paintpalette.fill")
+                        .listRowBackground(rowBackground())
+                    Toggle(isOn: nightModeBinding) {
+                        Label("Ночной режим", systemImage: "moon.fill")
+                    }
+                    .listRowBackground(rowBackground())
                     Label("Аккаунт и безопасность", systemImage: "lock.shield.fill")
+                        .listRowBackground(rowBackground())
                 } footer: {
                     Text("Раздел в разработке — настройки будут как на сайте.")
                 }
             }
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("Настройки")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Закрыть") { dismiss() }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(Color.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Закрыть")
                 }
             }
         }
+        .preferredColorScheme(storedPreferredScheme)
+        .id(themeRefreshIdentity)
     }
 }
 
