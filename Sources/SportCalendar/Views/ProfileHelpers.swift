@@ -285,6 +285,79 @@ func athleteLevelLabel(level: Int) -> String {
     return "Элита"
 }
 
+// MARK: - Трофеи: тексты посланий и подсказок (`js/core/gamification.js` → `ACHIEVEMENT_DEFS`)
+
+enum AchievementCopy {
+    /// Объединяет поля из API и локальный каталог (как на вебе у клиента).
+    struct Resolved: Sendable {
+        var wisdom: String
+        var wisdomAuthor: String
+        var unlockHint: String
+    }
+
+    static func resolved(for a: Achievement) -> Resolved {
+        let row = catalog[a.id]
+        return Resolved(
+            wisdom: a.wisdom ?? row?.wisdom ?? "",
+            wisdomAuthor: a.wisdomAuthor ?? row?.wisdomAuthor ?? "",
+            unlockHint: a.unlockHint ?? row?.unlockHint ?? ""
+        )
+    }
+
+    private static let catalog: [String: Resolved] = [
+        "body_card": .init(
+            wisdom: "Кто ясно видит своё тело — не в цифрах гордости, а в заботе, — тот крепче стоит на пути.",
+            wisdomAuthor: "Книга спорта",
+            unlockHint: "Укажите рост и вес в анкете."
+        ),
+        "face_set": .init(
+            wisdom: "Лицо, которое ты показываешь миру с теплотой, само становится опорой для других.",
+            wisdomAuthor: "Книга спорта",
+            unlockHint: "Загрузите фото в профиль."
+        ),
+        "first_rep": .init(
+            wisdom: "Даже путь в тысячу ли начинается с одного шага — и этот шаг уже меняет направление ума.",
+            wisdomAuthor: "Лао-цзы, «Дао дэ цзин»",
+            unlockHint: "Отметьте первую тренировку в календаре."
+        ),
+        "ten_pack": .init(
+            wisdom: "Вода камень точит не силой, а постоянством — так и привычка к движению шлифует характер.",
+            wisdomAuthor: "Лао-цзы, «Дао дэ цзин»",
+            unlockHint: "Наберите 10 отмеченных тренировок."
+        ),
+        "fifty_club": .init(
+            wisdom: "Не поддавайся лени: она плетёт цепи, мягкие на ощупь, но тяжёлые для сердца.",
+            wisdomAuthor: "Дхаммапада",
+            unlockHint: "Наберите 50 тренировок."
+        ),
+        "century": .init(
+            wisdom: "Свет не гаснет, пока мы снова и снова выбираем действие вместо оправдания.",
+            wisdomAuthor: "Книга спорта",
+            unlockHint: "Наберите 100 тренировок."
+        ),
+        "thousand_club": .init(
+            wisdom: "Тысяча отметок в календаре — не повод кичаться, а тихое доказательство: путь из намерения стал телом, а ритм дней подчинился твоей воле.",
+            wisdomAuthor: "Книга спорта",
+            unlockHint: "Наберите 1000 отмеченных тренировок."
+        ),
+        "words_first": .init(
+            wisdom: "Тренируй не только тело: без ясного ума сила остаётся слепой. Мысль, как и мышца, крепнет от упражнения.",
+            wisdomAuthor: "Книга спорта",
+            unlockHint: "Отгадайте слово дня в игре «Слова» (доступна с сервером)."
+        ),
+        "level_five": .init(
+            wisdom: "Как слон в бою выдерживает стрелы, так и здоровый ум переносит усталость, не ломаясь.",
+            wisdomAuthor: "Дхаммапада",
+            unlockHint: "Достигните 5 уровня по опыту."
+        ),
+        "competition_win": .init(
+            wisdom: "Кто держит победу как служение процессу, а не как кичество, тому и трибуны не нужны — достаточно знать, что день отдан без остатка.",
+            wisdomAuthor: "Книга спорта",
+            unlockHint: "Механизм соревнований в разработке: позже здесь можно будет забрать кубок. Пока просто копите форму — старт ещё впереди."
+        ),
+    ]
+}
+
 // MARK: - ISO date parsing
 
 extension Date {

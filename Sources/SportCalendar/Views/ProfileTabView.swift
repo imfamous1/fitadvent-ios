@@ -769,6 +769,7 @@ private struct ProfileStatsSheet: View {
 }
 
 private struct ProfileHealthSheet: View {
+    @Environment(\.dismiss) private var dismiss
     var profile: UserProfile?
     var gamification: Gamification?
     var onPickKcal: (Int) async -> Void
@@ -778,66 +779,93 @@ private struct ProfileHealthSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     if let bmi = gamification?.bmi, bmi.isFinite, let info = getBmiInterpretation(bmi: bmi) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Индекс массы тела")
-                                .font(.title3.weight(.bold))
-                            Text("ИМТ \(String(format: "%.1f", bmi).replacingOccurrences(of: ".", with: ",")) — \(info.category)")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            Text(info.detail)
-                                .font(.body)
-                            Text("Ограничения показателя")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                                .padding(.top, 4)
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("• ИМТ — упрощённый показатель для взрослых.")
-                                Text("• Не учитывает мышечную массу, пол и возраст детей.")
+                        VStack(alignment: .leading, spacing: 10) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Индекс массы тела")
+                                    .font(.title3.weight(.bold))
+                                Text("ИМТ \(String(format: "%.1f", bmi).replacingOccurrences(of: ".", with: ",")) — \(info.category)")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
                             }
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
+                            .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(info.detail)
+                                    .font(.body)
+                                Text("Ограничения показателя")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                    .padding(.top, 4)
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("• ИМТ — упрощённый показатель для взрослых.")
+                                    Text("• Не учитывает мышечную массу, пол и возраст детей.")
+                                }
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                            }
+                            .padding()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(RoundedRectangle(cornerRadius: ProfileChrome.radiusXl).fill(Color(uiColor: .secondarySystemGroupedBackground)))
                         }
-                        .padding()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(RoundedRectangle(cornerRadius: ProfileChrome.radiusXl).fill(Color(uiColor: .secondarySystemGroupedBackground)))
                     }
 
                     if let p = profile {
                         let normsPack = computeTdeeAndKcalNorms(p)
                         let norms = normsPack.norms
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Суточные калории")
-                                .font(.title3.weight(.bold))
-                            Text(norms.maintenance != nil ? "Три ориентира при обычной нагрузке" : "Не удалось оценить по текущим данным")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            if let d = norms.deficit, let m = norms.maintenance, let s = norms.surplus {
-                                kcalRow(label: "Похудение", value: d)
-                                Divider()
-                                kcalRow(label: "Поддержание веса", value: m)
-                                Divider()
-                                kcalRow(label: "Набор веса", value: s)
-                                Text("Оценка по Mifflin–St Jeor, \(kcalRecommendationAgeFootnote(p)), умеренная активность. Не заменяет консультацию врача.")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .padding(.top, 6)
-                                Text("Нажмите строку, чтобы записать ориентир в профиль как дневную цель.")
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
-                            } else {
-                                Text("Заполните анкету (рост, вес), чтобы получить ориентиры.")
+                        VStack(alignment: .leading, spacing: 10) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Суточные калории")
+                                    .font(.title3.weight(.bold))
+                                Text(norms.maintenance != nil ? "Три ориентира при обычной нагрузке" : "Не удалось оценить по текущим данным")
+                                    .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
+                            .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                if let d = norms.deficit, let m = norms.maintenance, let s = norms.surplus {
+                                    kcalRow(label: "Похудение", value: d)
+                                    Divider()
+                                    kcalRow(label: "Поддержание веса", value: m)
+                                    Divider()
+                                    kcalRow(label: "Набор веса", value: s)
+                                    Text("Оценка по Mifflin–St Jeor, \(kcalRecommendationAgeFootnote(p)), умеренная активность. Не заменяет консультацию врача.")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .padding(.top, 6)
+                                    Text("Нажмите строку, чтобы записать ориентир в профиль как дневную цель.")
+                                        .font(.caption2)
+                                        .foregroundStyle(.tertiary)
+                                } else {
+                                    Text("Заполните анкету (рост, вес), чтобы получить ориентиры.")
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .padding()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(RoundedRectangle(cornerRadius: ProfileChrome.radiusXl).fill(Color(uiColor: .secondarySystemGroupedBackground)))
                         }
-                        .padding()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(RoundedRectangle(cornerRadius: ProfileChrome.radiusXl).fill(Color(uiColor: .secondarySystemGroupedBackground)))
                     }
                 }
-                .padding()
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
             }
+            .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("Здоровье")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(Color.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Закрыть")
+                }
+            }
         }
     }
 
@@ -860,83 +888,281 @@ private struct ProfileHealthSheet: View {
 }
 
 private struct ProfileLevelSheet: View {
+    @Environment(\.dismiss) private var dismiss
     var g: Gamification?
+
+    /// Как на вебе (`gamification.js`):15 за тренировку, до 5 за «Слова».
+    private let xpPerWorkout = 15
+    private let xpPerWordsWin = 5
+
+    private var navigationTitleText: String {
+        guard let g else { return "Уровень" }
+        return "Уровень \(g.level ?? 1)"
+    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 20) {
                     if let g {
-                        let level = g.level ?? 1
-                        Text(athleteLevelLabel(level: level))
-                            .font(.title2.weight(.heavy))
-                        Text("Уровень \(level)")
-                            .font(.title3)
-                            .foregroundStyle(.secondary)
-                        if let pct = g.progressPct {
-                            let clamped = min(max(pct, 0), 1)
-                            ProgressView(value: clamped) {
-                                Text("Опыт в уровне")
-                            } currentValueLabel: {
-                                let into = g.xpIntoLevel ?? 0
-                                let need = g.xpForNextLevel ?? 0
-                                Text("\(into) / \(into + max(0, need)) XP")
-                                    .font(.caption)
-                            }
-                            .tint(Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue))
-                        }
-                        Group {
-                            statLine("Всего XP", value: "\(g.xpTotal ?? 0)")
-                            statLine("За тренировки", value: "\(g.xpFromWorkouts ?? 0)")
-                            statLine("Бонус", value: "\(g.xpFromBonus ?? g.bonusXp ?? 0)")
-                        }
-                        .font(.body)
+                        levelProgressBlock(g: g)
+                        xpSourcesBlock
                     } else {
                         Text("Нет данных геймификации.")
                             .foregroundStyle(.secondary)
                     }
                 }
-                .padding()
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
             }
-            .navigationTitle("Уровень")
+            .background(Color(uiColor: .systemGroupedBackground))
+            .navigationTitle(navigationTitleText)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(Color.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Закрыть")
+                }
+            }
         }
     }
 
-    private func statLine(_ title: String, value: String) -> some View {
-        HStack {
-            Text(title)
-            Spacer()
-            Text(value).fontWeight(.semibold)
+    private func levelProgressBlock(g: Gamification) -> some View {
+        let level = g.level ?? 1
+        let rank = athleteLevelLabel(level: level)
+        let span = max(0, g.xpSpanThisLevel ?? 0)
+        let into = max(0, g.xpIntoLevel ?? 0)
+        let xpNext = max(0, g.xpForNextLevel ?? 0)
+        let pct = min(max(g.progressPct ?? 0, 0), 1)
+        let primary = Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue)
+
+        return VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Прогресс")
+                    .font(.title3.weight(.bold))
+                Text("\(rank) · \(xpNext) XP до следующего уровня")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .center, spacing: 8) {
+                    Text("0")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(minWidth: 10, alignment: .leading)
+                    GeometryReader { geo in
+                        let fillW = max(0, min(geo.size.width, geo.size.width * CGFloat(pct)))
+                        ZStack(alignment: .leading) {
+                            Capsule()
+                                .fill(Color(uiColor: .tertiarySystemFill))
+                            Capsule()
+                                .fill(primary)
+                                .frame(width: fillW)
+                        }
+                    }
+                    .frame(height: 10)
+                    Text("\(span)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(minWidth: 18, alignment: .trailing)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Опыт в текущем уровне")
+                .accessibilityValue("\(into) из \(max(span, 1))")
+
+                (Text("\(into)").fontWeight(.bold) + Text(" / \(span) XP в этом уровне"))
+                    .font(.subheadline)
+            }
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: ProfileChrome.radiusXl).fill(Color(uiColor: .secondarySystemGroupedBackground)))
+        }
+    }
+
+    private var xpSourcesBlock: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Начисление опыта")
+                    .font(.title3.weight(.bold))
+                Text("Физическая и умственная активность")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("• ") + Text("Физический: ") + Text("\(xpPerWorkout) XP").fontWeight(.semibold) + Text(" за каждую отмеченную тренировку в календаре.")
+                Text("• ") + Text("Умственный: до ") + Text("\(xpPerWordsWin) XP").fontWeight(.semibold) + Text(" в сутки за победу в «Словах»; позже — другие умственные задания.")
+            }
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding()
+            .background(RoundedRectangle(cornerRadius: ProfileChrome.radiusXl).fill(Color(uiColor: .secondarySystemGroupedBackground)))
         }
     }
 }
 
 private struct ProfileTrophiesSheet: View {
+    @Environment(\.dismiss) private var dismiss
     var achievements: [Achievement]
+    @State private var path = NavigationPath()
 
     var body: some View {
-        NavigationStack {
-            List {
-                ForEach(achievements, id: \.id) { a in
-                    HStack(alignment: .top, spacing: 12) {
-                        Text(a.icon)
-                            .font(.title2)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(a.title)
-                                .font(.body.weight(.semibold))
-                            Text(a.unlocked ? "Получено" : "Пока закрыто")
-                                .font(.caption)
-                                .foregroundStyle(a.unlocked ? .green : .secondary)
-                        }
-                        Spacer()
+        NavigationStack(path: $path) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Все значки")
+                            .font(.title3.weight(.bold))
+                        Text("Нажмите карточку, чтобы открыть подробности")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
-                    .opacity(a.unlocked ? 1 : 0.55)
+                    .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
+
+                    if achievements.isEmpty {
+                        Text("Пока нет значков.")
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding()
+                            .background(RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous).fill(Color(uiColor: .secondarySystemGroupedBackground)))
+                    } else {
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                            ForEach(achievements, id: \.id) { a in
+                                Button {
+                                    path.append(a)
+                                } label: {
+                                    trophyGridCell(a)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous).fill(Color(uiColor: .secondarySystemGroupedBackground)))
+                    }
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
             }
+            .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("Трофеи")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(Color.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Закрыть")
+                }
+            }
+            .navigationDestination(for: Achievement.self) { a in
+                ProfileAchievementDetailView(achievement: a)
+            }
         }
+    }
+
+    private func trophyGridCell(_ a: Achievement) -> some View {
+        VStack(spacing: 8) {
+            Text(a.icon)
+                .font(.system(size: 36))
+            Text(a.displayTitle)
+                .font(.caption.weight(.semibold))
+                .multilineTextAlignment(.center)
+                .lineLimit(3)
+                .foregroundStyle(a.unlocked ? Color.primary : Color.secondary)
+            Text(a.unlocked ? "Открыто" : "Закрыто")
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(a.unlocked ? Color.green : Color.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 14)
+        .padding(.horizontal, 8)
+        .background(
+            RoundedRectangle(cornerRadius: ProfileChrome.radiusLg, style: .continuous)
+                .fill(Color(uiColor: .tertiarySystemGroupedBackground))
+        )
+        .opacity(a.unlocked ? 1 : 0.55)
+        .accessibilityLabel(a.unlocked ? "Открыто: \(a.displayTitle). Подробнее" : "Закрыто: \(a.displayTitle). Подробнее")
+    }
+}
+
+private struct ProfileAchievementDetailView: View {
+    var achievement: Achievement
+
+    private var copy: AchievementCopy.Resolved { AchievementCopy.resolved(for: achievement) }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Детали")
+                        .font(.title3.weight(.bold))
+                    Text(detailSubtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
+
+                VStack(alignment: .leading, spacing: 16) {
+                    Text(achievement.icon)
+                        .font(.system(size: 48))
+                        .frame(maxWidth: .infinity)
+
+                    if achievement.unlocked {
+                        if copy.wisdom.isEmpty {
+                            Text("Послание скоро появится.")
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text(copy.wisdom)
+                                .font(.body)
+                                .italic()
+                            if !copy.wisdomAuthor.isEmpty {
+                                Text(copy.wisdomAuthor)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    } else {
+                        if !copy.unlockHint.isEmpty {
+                            Text(copy.unlockHint)
+                                .font(.body)
+                        }
+                        Text("Выполните условие — и здесь появится послание.")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous).fill(Color(uiColor: .secondarySystemGroupedBackground)))
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+        }
+        .background(Color(uiColor: .systemGroupedBackground))
+        .navigationTitle(achievement.displayTitle)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var detailSubtitle: String {
+        achievement.unlocked ? "Послание за открытие награды" : "Как получить награду"
     }
 }
 

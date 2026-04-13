@@ -75,11 +75,21 @@ struct Gamification: Codable, Sendable {
     var achievements: [Achievement]?
 }
 
-struct Achievement: Codable, Sendable {
+struct Achievement: Codable, Sendable, Hashable {
     var id: String
     var title: String
     var icon: String
     var unlocked: Bool
+    /// С сервера может прийти позже; до тех пор подставляем копию из `AchievementCopy` (как `ACHIEVEMENT_DEFS` на вебе).
+    var wisdom: String?
+    var wisdomAuthor: String?
+    var unlockHint: String?
+
+    /// Короткий заголовок в сетке и на экране деталей (в т.ч. если в кэше ещё старая строка с «· скоро»).
+    var displayTitle: String {
+        if id == "competition_win" { return "Победа в соревновании" }
+        return title
+    }
 }
 
 struct FriendRequestsPayload: Codable, Sendable {
