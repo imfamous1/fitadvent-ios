@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CalendarTabView: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(\.colorScheme) private var colorScheme
     @State private var showWordsGame = false
     @State private var selectedCalendarId: String = ""
     @State private var dayDetail: DayDetail?
@@ -16,9 +17,9 @@ struct CalendarTabView: View {
                         title: MoscowCalendar.monthTitle(calendarId: calendarIdForTitle),
                         subtitle: "Отмечай свои тренировки"
                     )
-                    .padding(.bottom, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 20)
 
-                    calendarPicker
                     if let banner {
                         Text(banner)
                             .font(.caption)
@@ -26,7 +27,7 @@ struct CalendarTabView: View {
                             .padding(.bottom, 8)
                     }
 
-                    gamificationCard
+                    streakBanner
                     monthGrid
                     gamesSection
                 }
@@ -62,94 +63,131 @@ struct CalendarTabView: View {
     }
 
     private func syncCalendarIfNeeded() {
-        let keys = appState.bootstrap.map { Array($0.progress.keys) } ?? []
-        if selectedCalendarId.isEmpty {
-            selectedCalendarId = MoscowCalendar.defaultCalendarId(keys: keys)
-        }
-    }
-
-    private var calendarPicker: some View {
-        let keys = (appState.bootstrap.map { Array($0.progress.keys) } ?? []).sorted()
-        var options = Set(keys)
-        options.insert(MoscowCalendar.defaultCalendarId(keys: []))
-        options.insert(selectedCalendarId)
-        let sorted = options.sorted()
-
-        return VStack(alignment: .leading, spacing: 8) {
-            Text("Календарь")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Picker("Календарь", selection: $selectedCalendarId) {
-                ForEach(sorted, id: \.self) { id in
-                    Text(id).tag(id)
-                }
-            }
-            .pickerStyle(.menu)
-            HStack(spacing: 8) {
-                Button {
-                    selectedCalendarId = MoscowCalendar.shiftMonth(calendarId: calendarIdForTitle, delta: -1)
-                } label: {
-                    Label("Предыдущий", systemImage: "chevron.left")
-                        .font(.subheadline.weight(.semibold))
-                }
-                .buttonStyle(.bordered)
-                .tint(Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue))
-
-                Button {
-                    selectedCalendarId = MoscowCalendar.shiftMonth(calendarId: calendarIdForTitle, delta: 1)
-                } label: {
-                    Label("Следующий", systemImage: "chevron.right")
-                        .font(.subheadline.weight(.semibold))
-                }
-                .buttonStyle(.bordered)
-                .tint(Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue))
-
-                Spacer()
-                Button("Сегодня") {
-                    selectedCalendarId = MoscowCalendar.defaultCalendarId(keys: [])
-                }
-                .buttonStyle(.bordered)
-                .disabled(selectedCalendarId == MoscowCalendar.defaultCalendarId(keys: []))
-            }
-        }
-        .padding(.bottom, 16)
+        selectedCalendarId = MoscowCalendar.defaultCalendarId(keys: [])
     }
 
     @ViewBuilder
-    private var gamificationCard: some View {
+    private var streakBanner: some View {
         if let b = appState.bootstrap {
-            let doneThisMonth = daysDoneCount(for: selectedCalendarId, in: b)
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Прогресс")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Уровень \(b.gamification.level ?? 1)")
-                            .font(.title3.weight(.bold))
-                        Text("Тренировок всего: \(b.gamification.totalWorkouts ?? 0)")
-                            .font(.subheadline)
+            let streak = monthStreakStats(for: calendarIdForTitle, in: b)
+            let ringTrack = colorScheme == .dark ? Color.green.opacity(0.32) : Color.green.opacity(0.24)
+            let ringProgress = colorScheme == .dark ? Color(red: 0.26, green: 0.95, blue: 0.47) : Color(red: 0.10, green: 0.72, blue: 0.31)
+            let flameColor = colorScheme == .dark ? Color(red: 0.35, green: 0.98, blue: 0.53) : Color(red: 0.07, green: 0.66, blue: 0.29)
+            let titleColor = colorScheme == .dark ? Color(red: 0.83, green: 0.97, blue: 0.86) : Color(red: 0.08, green: 0.32, blue: 0.18)
+            let badgeFill = colorScheme == .dark ? Color(red: 0.12, green: 0.32, blue: 0.18) : Color.green.opacity(0.18)
+            let borderColor = colorScheme == .dark ? Color(red: 0.22, green: 0.58, blue: 0.34).opacity(0.8) : Color.green.opacity(0.22)
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .trim(from: 0, to: 0.8)
+                        .stroke(ringTrack, style: StrokeStyle(lineWidth: 5.25, lineCap: .round))
+                        .rotationEffect(.degrees(126))
+                    Circle()
+                        .trim(from: 0, to: 0.8 * streak.ringRatio)
+                        .stroke(ringProgress, style: StrokeStyle(lineWidth: 5.25, lineCap: .round))
+                        .rotationEffect(.degrees(126))
+                    VStack(spacing: 1) {
+                        Text("\(streak.current)")
+                            .font(.system(size: 19, weight: .heavy, design: .rounded))
+                            .foregroundStyle(titleColor)
+                        Text(dayWord(streak.current))
+                            .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(.secondary)
-                        Text("В этом месяце: \(doneThisMonth)")
-                            .font(.subheadline)
-                            .foregroundStyle(Color(red: ProfileChrome.accentBlue.red, green: ProfileChrome.accentBlue.green, blue: ProfileChrome.accentBlue.blue))
                     }
-                    Spacer()
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(flameColor)
+                        .offset(y: 30)
                 }
-                .padding()
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
-                        .fill(Color(uiColor: .secondarySystemGroupedBackground))
-                )
+                .frame(width: 72, height: 72)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(streak.current > 0 ? "Так держать" : "Серия тренировок")
+                        .font(.system(size: 15, weight: .heavy))
+                    Text(streak.subtitle)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: 8) {
+                        Text("Рекорд серии")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                        Text("\(streak.longest) \(dayWord(streak.longest))")
+                            .font(.system(size: 10, weight: .semibold))
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2)
+                            .background(
+                                Capsule(style: .continuous)
+                                    .fill(badgeFill)
+                            )
+                            .overlay(
+                                Capsule(style: .continuous)
+                                    .stroke(borderColor, lineWidth: 1)
+                            )
+                    }
+                }
+                Spacer(minLength: 0)
             }
-            .padding(.bottom, 16)
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: colorScheme == .dark
+                                ? [Color(red: 0.09, green: 0.19, blue: 0.13), Color(red: 0.13, green: 0.27, blue: 0.18)]
+                                : [Color(red: 0.95, green: 0.99, blue: 0.96), Color(red: 0.88, green: 0.97, blue: 0.91)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .stroke(borderColor, lineWidth: 1)
+            )
+            .padding(.bottom, 12)
         }
     }
 
-    private func daysDoneCount(for calId: String, in b: BootstrapResponse) -> Int {
-        guard let days = b.progress[calId]?.days else { return 0 }
-        return days.values.filter { $0.done == true }.count
+    private func monthStreakStats(for calId: String, in b: BootstrapResponse) -> (current: Int, longest: Int, ringRatio: CGFloat, subtitle: String) {
+        let days = b.progress[calId]?.days ?? [:]
+        let dim = MoscowCalendar.daysInMonth(calendarId: calId)
+        let sorted = (1 ... dim).map { days[String($0)]?.done == true }
+
+        var longest = 0
+        var running = 0
+        for done in sorted {
+            if done {
+                running += 1
+                longest = max(longest, running)
+            } else {
+                running = 0
+            }
+        }
+
+        let current = sorted.reversed().prefix { $0 }.count
+        let ratio = dim > 0 ? min(1, max(0, CGFloat(current) / CGFloat(dim))) : 0
+        let subtitle: String
+        if current >= 7 {
+            subtitle = "Уже целую неделю подряд отмечаешь тренировки в этом месяце."
+        } else if current >= 2 {
+            subtitle = "Отмечай дни подряд - серия будет расти."
+        } else if current == 1 {
+            subtitle = "Зайди завтра, чтобы не обнулить счётчик."
+        } else {
+            subtitle = "Отметь тренировку - начнём считать дни подряд."
+        }
+        return (current, longest, ratio, subtitle)
+    }
+
+    private func dayWord(_ n: Int) -> String {
+        let x = abs(n) % 100
+        if (11 ... 14).contains(x) { return "дней" }
+        switch abs(n) % 10 {
+        case 1: return "день"
+        case 2 ... 4: return "дня"
+        default: return "дней"
+        }
     }
 
     private var monthGrid: some View {
@@ -167,54 +205,162 @@ struct CalendarTabView: View {
         let firstDate = cal.date(from: c) ?? Date()
         let weekday = cal.component(.weekday, from: firstDate)
         let leading = (weekday + 5) % 7
+        let prevMonthDate = cal.date(byAdding: .month, value: -1, to: firstDate) ?? firstDate
+        let prevMonthDim = cal.range(of: .day, in: .month, for: prevMonthDate)?.count ?? 30
+        let trailing = (7 - ((leading + dim) % 7)) % 7
 
         let rows = appState.bootstrap?.progress[calId]?.days ?? [:]
 
-        return VStack(alignment: .leading, spacing: 10) {
-            Text("Месяц")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 6) {
+        return VStack(alignment: .leading, spacing: 8) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 7), spacing: 8) {
                 ForEach(["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"], id: \.self) { w in
                     Text(w)
                         .font(.caption2.weight(.bold))
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
                 }
-                // id не должны пересекаться с `1...dim` у дней месяца (иначе LazyVGrid дублирует id1…5 и т.д.).
-                ForEach((0 ..< leading).map { "calendarMonthLeading.\($0)" }, id: \.self) { _ in
-                    Color.clear.frame(width: 36, height: 36)
+
+                ForEach(0 ..< leading, id: \.self) { i in
+                    let dayNum = prevMonthDim - leading + i + 1
+                    dayCell(
+                        day: dayNum,
+                        visual: .outside,
+                        action: nil
+                    )
                 }
+
                 ForEach(1 ... dim, id: \.self) { day in
                     let done = rows[String(day)]?.done == true
-                    Button {
-                        dayDetail = DayDetail(day: day)
-                    } label: {
-                        Text("\(day)")
-                            .font(.subheadline.weight(.semibold))
-                            .frame(width: 36, height: 36)
-                            .background(
-                                Circle()
-                                    .fill(done
-                                        ? Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue).opacity(0.9)
-                                        : Color(uiColor: .tertiarySystemGroupedBackground))
-                            )
-                            .foregroundStyle(done ? .white : .primary)
-                    }
-                    .buttonStyle(.plain)
+                    dayCell(
+                        day: day,
+                        visual: dayVisualState(year: y, month: m, day: day, done: done),
+                        action: { dayDetail = DayDetail(day: day) }
+                    )
+                }
+
+                ForEach(0 ..< trailing, id: \.self) { i in
+                    dayCell(
+                        day: i + 1,
+                        visual: .outside,
+                        action: nil
+                    )
                 }
             }
         }
         .padding(.bottom, 20)
     }
 
+    private enum DayVisualState {
+        case done
+        case missed
+        case today
+        case future
+        case outside
+    }
+
+    private func dayVisualState(year: Int, month: Int, day: Int, done: Bool) -> DayVisualState {
+        if done { return .done }
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Europe/Moscow") ?? .current
+        let today = cal.startOfDay(for: Date())
+        var comps = DateComponents()
+        comps.year = year
+        comps.month = month
+        comps.day = day
+        let date = cal.date(from: comps) ?? today
+        let cmp = cal.compare(cal.startOfDay(for: date), to: today, toGranularity: .day)
+        if cmp == .orderedSame { return .today }
+        if cmp == .orderedDescending { return .future }
+        return .missed
+    }
+
+    private func dayCell(day: Int, visual: DayVisualState, action: (() -> Void)?) -> some View {
+        let background = Color(uiColor: .secondarySystemGroupedBackground)
+        let iconBackground: Color
+        let iconName: String
+        let iconColor: Color
+        let iconWeight: Font.Weight
+        let iconFilled: Bool
+
+        switch visual {
+        case .done:
+            iconBackground = Color(red: 0.18, green: 0.64, blue: 0.35).opacity(0.18)
+            iconName = "checkmark"
+            iconColor = Color(red: 0.18, green: 0.64, blue: 0.35)
+            iconWeight = .bold
+            iconFilled = false
+        case .missed:
+            iconBackground = Color.red.opacity(0.16)
+            iconName = "xmark"
+            iconColor = .red
+            iconWeight = .bold
+            iconFilled = false
+        case .today:
+            iconBackground = Color(uiColor: .tertiarySystemGroupedBackground)
+            iconName = "flame.fill"
+            iconColor = .green
+            iconWeight = .semibold
+            iconFilled = true
+        case .future:
+            iconBackground = Color(uiColor: .tertiarySystemGroupedBackground)
+            iconName = "flame"
+            iconColor = .secondary
+            iconWeight = .regular
+            iconFilled = false
+        case .outside:
+            iconBackground = Color(uiColor: .tertiarySystemGroupedBackground)
+            iconName = "flame"
+            iconColor = .secondary.opacity(0.75)
+            iconWeight = .regular
+            iconFilled = false
+        }
+
+        let content = VStack(spacing: 7) {
+            Text("\(day)")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(visual == .outside ? Color.secondary.opacity(0.7) : Color.secondary)
+            ZStack {
+                Circle()
+                    .fill(iconBackground)
+                    .frame(width: 26, height: 26)
+                Image(systemName: iconName)
+                    .font(.system(size: iconFilled ? 15 : 12, weight: iconWeight))
+                    .foregroundStyle(iconColor)
+            }
+            .opacity(visual == .outside ? 0.88 : 1)
+        }
+        .frame(maxWidth: .infinity, minHeight: 56, alignment: .center)
+        .padding(.vertical, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(background)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(visual == .today ? Color.green.opacity(0.42) : .clear, lineWidth: 1.5)
+        )
+
+        if let action, visual != .outside {
+            return AnyView(
+                Button(action: action) {
+                    content
+                }
+                .buttonStyle(.plain)
+            )
+        }
+        return AnyView(content)
+    }
+
     private var gamesSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Игры")
-                .font(.title3.weight(.bold))
-            Text("Короткие задания для ума")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Игры")
+                    .font(.title3.weight(.bold))
+                Text("Короткие задания для ума")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
             Button {
                 showWordsGame = true
             } label: {
@@ -241,6 +387,7 @@ struct CalendarTabView: View {
             }
             .buttonStyle(.plain)
         }
+        .padding(.top, 16)
     }
 
     @ViewBuilder
