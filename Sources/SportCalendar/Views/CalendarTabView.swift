@@ -285,15 +285,15 @@ struct CalendarTabView: View {
         switch visual {
         case .done:
             iconBackground = Color(red: 0.18, green: 0.64, blue: 0.35).opacity(0.18)
-            iconName = "checkmark"
+            iconName = "checkmark.circle.fill"
             iconColor = Color(red: 0.18, green: 0.64, blue: 0.35)
-            iconWeight = .bold
+            iconWeight = .semibold
             iconFilled = false
         case .missed:
             iconBackground = Color.red.opacity(0.16)
-            iconName = "xmark"
+            iconName = "xmark.circle.fill"
             iconColor = .red
-            iconWeight = .bold
+            iconWeight = .semibold
             iconFilled = false
         case .today:
             iconBackground = Color(uiColor: .tertiarySystemGroupedBackground)
