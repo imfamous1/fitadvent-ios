@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ProfileTabView: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var activeSheet: ProfileSheet?
     @State private var photoPickerItem: PhotosPickerItem?
@@ -249,30 +250,85 @@ struct ProfileTabView: View {
         .multilineTextAlignment(.center)
         .padding(.horizontal, 9)
         .padding(.vertical, 4)
-        .background(chipBackground(.telegram))
-        .clipShape(Capsule())
+        .background(
+            Capsule(style: .continuous)
+                .fill(ProfileChrome.communityProfilePillFill(colorScheme: colorScheme))
+        )
+        .overlay(
+            Capsule(style: .continuous)
+                .strokeBorder(ProfileChrome.communityProfilePillOutline(colorScheme: colorScheme), lineWidth: 1)
+        )
+        .foregroundStyle(Color(red: ProfileChrome.chipTelegram.red, green: ProfileChrome.chipTelegram.green, blue: ProfileChrome.chipTelegram.blue))
     }
 
     private func metaChip(_ text: String, style: ChipStyle) -> some View {
-        Text(text)
-            .font(.caption.weight(.semibold))
-            .lineLimit(1)
-            .minimumScaleFactor(0.75)
-            .multilineTextAlignment(.center)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 4)
-            .background(chipBackground(style))
-            .clipShape(Capsule())
-    }
-
-    private func chipBackground(_ style: ChipStyle) -> Color {
         switch style {
         case .athlete:
-            return Color(red: ProfileChrome.chipAthlete.red, green: ProfileChrome.chipAthlete.green, blue: ProfileChrome.chipAthlete.blue).opacity(0.12)
+            return AnyView(
+                Text(text)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(ProfileChrome.communityProfilePillFill(colorScheme: colorScheme))
+                    )
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .strokeBorder(ProfileChrome.communityProfilePillOutline(colorScheme: colorScheme), lineWidth: 1)
+                    )
+                    .foregroundStyle(Color(red: ProfileChrome.chipAthlete.red, green: ProfileChrome.chipAthlete.green, blue: ProfileChrome.chipAthlete.blue))
+            )
         case .vip:
-            return Color(red: ProfileChrome.chipVip.red, green: ProfileChrome.chipVip.green, blue: ProfileChrome.chipVip.blue).opacity(0.14)
+            return AnyView(
+                Text(text)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(ProfileChrome.communityProfilePillFill(colorScheme: colorScheme))
+                    )
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .strokeBorder(ProfileChrome.communityProfilePillOutline(colorScheme: colorScheme), lineWidth: 1)
+                    )
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [
+                                Color(red: ProfileChrome.primary.red, green: ProfileChrome.primary.green, blue: ProfileChrome.primary.blue),
+                                Color(red: ProfileChrome.chipVip.red, green: ProfileChrome.chipVip.green, blue: ProfileChrome.chipVip.blue),
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+            )
         case .telegram:
-            return Color(red: ProfileChrome.chipTelegram.red, green: ProfileChrome.chipTelegram.green, blue: ProfileChrome.chipTelegram.blue).opacity(0.12)
+            return AnyView(
+                Text(text)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(ProfileChrome.communityProfilePillFill(colorScheme: colorScheme))
+                    )
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .strokeBorder(ProfileChrome.communityProfilePillOutline(colorScheme: colorScheme), lineWidth: 1)
+                    )
+                    .foregroundStyle(Color(red: ProfileChrome.chipTelegram.red, green: ProfileChrome.chipTelegram.green, blue: ProfileChrome.chipTelegram.blue))
+            )
         }
     }
 

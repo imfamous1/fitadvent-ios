@@ -185,7 +185,7 @@ struct NutritionTabView: View {
                     .foregroundStyle(.secondary)
                 Text("\(d.totalKcal) ккал")
                     .font(.title.weight(.heavy))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
                 if let recommendation = meta.recommendation {
                     Text(recommendation)
                         .font(.caption)
