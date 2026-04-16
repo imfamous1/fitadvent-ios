@@ -465,7 +465,7 @@ struct ProfileTabView: View {
             .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
             VStack(spacing: 0) {
                 exerciseRow(icon: "calendar", title: "Текущий", trailing: "FitAdvent") {
-                    activeSheet = .exerciseHint("Текущий месяц")
+                    activeSheet = .currentProgram
                 }
                 Divider().padding(.leading, ProfileChrome.exercisePlanDividerLeading)
                 if isProgramVoteBannerDayNow() {
@@ -483,7 +483,7 @@ struct ProfileTabView: View {
                 ) {
                     let isVip = appState.bootstrap.map { vipActive($0.user.profile) } ?? false
                     if isVip {
-                        activeSheet = .exerciseHint("Индивидуальная программа на месяц — полный сценарий как на сайте появится в следующих версиях.")
+                        activeSheet = .individualProgram
                     } else {
                         activeSheet = .exerciseHint("Доступно по подписке Премиум.")
                     }
@@ -582,6 +582,10 @@ struct ProfileTabView: View {
             ProfileEditSheet()
         case .exerciseHint(let t):
             ProfileHintSheet(text: t)
+        case .currentProgram:
+            CurrentProgramVoteSheet()
+        case .individualProgram:
+            IndividualProgramVoteSheet()
         }
     }
 
@@ -632,6 +636,8 @@ enum ProfileSheet: Identifiable {
     case trophies
     case edit
     case exerciseHint(String)
+    case currentProgram
+    case individualProgram
 
     var id: String {
         switch self {
@@ -642,6 +648,8 @@ enum ProfileSheet: Identifiable {
         case .trophies: return "trophies"
         case .edit: return "edit"
         case .exerciseHint(let s): return "hint-\(s.prefix(32))"
+        case .currentProgram: return "current-program"
+        case .individualProgram: return "individual-program"
         }
     }
 }
@@ -1418,6 +1426,676 @@ private struct ProfileEditSheet: View {
             errorBanner = e.message
         } catch {
             errorBanner = error.localizedDescription
+        }
+    }
+}
+
+// MARK: - Program Vote Sheets (веб-паритет: текущий / индивидуальный)
+
+private struct ProgramCatalogExercise: Identifiable, Sendable {
+    var id: String
+    var label: String
+    var hint: String
+    var unit: ProgramUnit
+    var baseBeginner: Int
+    var baseIntermediate: Int
+    var baseAdvanced: Int
+}
+
+private enum ProgramLevel: String, CaseIterable, Identifiable, Sendable {
+    case beginner
+    case intermediate
+    case advanced
+
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .beginner: return "Начальный"
+        case .intermediate: return "Средний"
+        case .advanced: return "Продвинутый"
+        }
+    }
+
+    var blurb: String {
+        switch self {
+        case .beginner: return "Меньше повторов и времени, акцент на технике."
+        case .intermediate: return "Умеренный объём и стабильная прогрессия."
+        case .advanced: return "Больше объём, рассчитано на устойчивую технику."
+        }
+    }
+
+    var monthEndRatio: Double {
+        switch self {
+        case .beginner: return 1.18
+        case .intermediate: return 1.85
+        case .advanced: return 2.75
+        }
+    }
+}
+
+private let programCatalog: [ProgramCatalogExercise] = [
+    .init(id: "pushup", label: "Отжимания", hint: "Планка на руках, опускание почти до пола и подъём.", unit: .reps, baseBeginner: 8, baseIntermediate: 16, baseAdvanced: 28),
+    .init(id: "pullup", label: "Подтягивания", hint: "Подтянуть подбородок выше перекладины и опуститься.", unit: .reps, baseBeginner: 4, baseIntermediate: 8, baseAdvanced: 12),
+    .init(id: "squat", label: "Приседания", hint: "Присед с прямой спиной и возврат в стойку.", unit: .reps, baseBeginner: 15, baseIntermediate: 30, baseAdvanced: 45),
+    .init(id: "plank", label: "Планка", hint: "Удержание корпуса прямой линией на локтях и носках.", unit: .sec, baseBeginner: 30, baseIntermediate: 50, baseAdvanced: 70),
+    .init(id: "crunch", label: "Скручивания", hint: "Подъём плеч от пола и плавный возврат.", unit: .reps, baseBeginner: 10, baseIntermediate: 16, baseAdvanced: 24),
+    .init(id: "lunge", label: "Выпады", hint: "Шаг вперёд, опускание до 90°, смена ноги.", unit: .reps, baseBeginner: 8, baseIntermediate: 14, baseAdvanced: 20),
+    .init(id: "glute_bridge", label: "Ягодичный мостик", hint: "Подъём таза до прямой линии и плавный спуск.", unit: .reps, baseBeginner: 12, baseIntermediate: 18, baseAdvanced: 26),
+    .init(id: "side_plank", label: "Боковая планка", hint: "Удержание корпуса на боку с опорой на предплечье.", unit: .sec, baseBeginner: 20, baseIntermediate: 35, baseAdvanced: 50),
+    .init(id: "burpee", label: "Берпи", hint: "Присед, планка, прыжок к рукам и вверх.", unit: .reps, baseBeginner: 5, baseIntermediate: 10, baseAdvanced: 15),
+    .init(id: "leg_raise", label: "Подъём ног лёжа", hint: "Поднять прямые ноги и медленно опустить.", unit: .reps, baseBeginner: 8, baseIntermediate: 14, baseAdvanced: 20),
+    .init(id: "dip_bars", label: "Отжимания на брусьях", hint: "Опускание на брусьях до 90° и подъём.", unit: .reps, baseBeginner: 4, baseIntermediate: 10, baseAdvanced: 16),
+    .init(id: "run", label: "Бег", hint: "Лёгкий/умеренный темп, контролируемое дыхание.", unit: .min, baseBeginner: 10, baseIntermediate: 20, baseAdvanced: 35),
+]
+
+private enum ProgramUnit: String, CaseIterable, Identifiable, Sendable {
+    case reps
+    case sec
+    case min
+    case km
+
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .reps: return "Повторы"
+        case .sec: return "Секунды"
+        case .min: return "Минуты"
+        case .km: return "Километры"
+        }
+    }
+}
+
+private struct CustomProgramExercise: Identifiable {
+    var id: String
+    var label: String
+    var unit: ProgramUnit
+    var beginner: Int
+    var intermediate: Int
+    var advanced: Int
+    var monthEndMultiplier: Double
+}
+
+private let isoDow: [String] = ["1", "2", "3", "4", "5", "6", "7"]
+private let dowTitles: [String: String] = [
+    "1": "Понедельник", "2": "Вторник", "3": "Среда", "4": "Четверг",
+    "5": "Пятница", "6": "Суббота", "7": "Воскресенье",
+]
+
+private func currentMoscowTarget() -> (year: Int, month: Int) {
+    let now = moscowYmdNow()
+    return (now.year, now.month)
+}
+
+private func monthVoteKey(year: Int, month: Int) -> String {
+    String(format: "%04d-%02d", year, month)
+}
+
+private func newCustomExerciseId() -> String {
+    let raw = UUID().uuidString.lowercased().replacingOccurrences(of: "-", with: "_")
+    return "u_\(raw.prefix(16))"
+}
+
+private struct CurrentProgramVoteSheet: View {
+    private enum Step {
+        case exercises
+        case level
+    }
+
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
+    @State private var step: Step = .exercises
+    @State private var selected: Set<String> = []
+    @State private var level: ProgramLevel = .beginner
+    @State private var saving = false
+    @State private var errorText: String?
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        if step == .exercises {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Шаг 1: Упражнения")
+                                    .font(.title3.weight(.bold))
+                                Text(stepOneSubtitle)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
+
+                            VStack(spacing: 0) {
+                                ForEach(Array(programCatalog.enumerated()), id: \.element.id) { idx, ex in
+                                    if idx > 0 {
+                                        Divider()
+                                            .padding(.leading, ProfileChrome.exercisePlanDividerLeading)
+                                    }
+                                    Button {
+                                        toggleExercise(ex.id)
+                                    } label: {
+                                        HStack(alignment: .top, spacing: 10) {
+                                            Image(systemName: selected.contains(ex.id) ? "checkmark.square.fill" : "square")
+                                                .font(.title3)
+                                                .foregroundStyle(selected.contains(ex.id) ? Color.accentColor : .secondary)
+                                                .padding(.top, 2)
+                                            VStack(alignment: .leading, spacing: 4) {
+                                                Text(ex.label)
+                                                    .font(.body.weight(.semibold))
+                                                    .foregroundStyle(.primary)
+                                                Text(ex.hint)
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                            Spacer(minLength: 0)
+                                        }
+                                        .padding(.vertical, 12)
+                                        .padding(.horizontal, ProfileChrome.exerciseRowPaddingH)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .background(
+                                RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
+                                    .fill(Color(uiColor: .secondarySystemGroupedBackground))
+                            )
+                        } else {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Шаг 2: Уровень и превью")
+                                    .font(.title3.weight(.bold))
+                                Text("Выберите уровень программы и проверьте прогрессию к концу месяца.")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
+
+                            Picker("Уровень", selection: $level) {
+                                ForEach(ProgramLevel.allCases) { lv in
+                                    Text(lv.title).tag(lv)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+
+                            Text(level.blurb)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
+
+                            if previewRows.isEmpty {
+                                Text("Выберите упражнения на первом шаге.")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                VStack(spacing: 0) {
+                                    HStack {
+                                        Text("Упражнение").font(.caption.weight(.semibold))
+                                        Spacer()
+                                        Text("Неделя 1").font(.caption.weight(.semibold))
+                                            .frame(width: 90, alignment: .trailing)
+                                        Text("Неделя 4").font(.caption.weight(.semibold))
+                                            .frame(width: 90, alignment: .trailing)
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(Color(uiColor: .tertiarySystemGroupedBackground))
+
+                                    VStack(spacing: 0) {
+                                        ForEach(Array(previewRows.enumerated()), id: \.element.id) { idx, row in
+                                            if idx > 0 { Divider() }
+                                            HStack {
+                                                Text(row.label)
+                                                    .font(.footnote)
+                                                Spacer()
+                                                Text(row.week1)
+                                                    .font(.footnote.monospacedDigit())
+                                                    .frame(width: 90, alignment: .trailing)
+                                                Text(row.week4)
+                                                    .font(.footnote.monospacedDigit())
+                                                    .frame(width: 90, alignment: .trailing)
+                                            }
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 10)
+                                        }
+                                    }
+                                    .background(Color(uiColor: .secondarySystemGroupedBackground))
+                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                }
+                            }
+                        }
+
+                        if let errorText {
+                            Text(errorText)
+                                .font(.footnote)
+                                .foregroundStyle(.red)
+                        }
+                    }
+                }
+                .padding(16)
+
+                Divider()
+                HStack(spacing: 10) {
+                    if step == .level {
+                        Button("Назад") {
+                            errorText = nil
+                            step = .exercises
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    Spacer(minLength: 0)
+                    if step == .exercises {
+                        Button("Далее") {
+                            if !canGoNext {
+                                errorText = "Выберите от \(poolMin) до \(poolMax) упражнений."
+                                return
+                            }
+                            errorText = nil
+                            step = .level
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!canGoNext)
+                    } else {
+                        Button(saving ? "Сохранение..." : "Сохранить выбор") {
+                            Task { await save() }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(saving || selected.isEmpty)
+                    }
+                }
+                .padding(16)
+            }
+            .navigationTitle("Текущий")
+            .navigationBarTitleDisplayMode(.inline)
+            .background {
+                Color(uiColor: .systemGroupedBackground)
+                    .ignoresSafeArea()
+            }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                    }
+                }
+            }
+            .onAppear(perform: hydrate)
+        }
+    }
+
+    private var isVip: Bool {
+        guard let b = appState.bootstrap else { return false }
+        return vipActive(b.user.profile)
+    }
+
+    private var poolMin: Int { isVip ? 1 : 2 }
+    private var poolMax: Int { isVip ? programCatalog.count : 5 }
+    private var canGoNext: Bool { selected.count >= poolMin && selected.count <= poolMax }
+
+    private var stepOneSubtitle: String {
+        if isVip {
+            return "Выберите упражнения из каталога - удобное вам количество."
+        }
+        return "Выберите упражнения из каталога - от \(poolMin) до \(poolMax)."
+    }
+
+    private struct PreviewRow {
+        var id: String
+        var label: String
+        var week1: String
+        var week4: String
+    }
+
+    private var previewRows: [PreviewRow] {
+        programCatalog
+            .filter { selected.contains($0.id) }
+            .map { ex in
+                let base: Int = switch level {
+                case .beginner: ex.baseBeginner
+                case .intermediate: ex.baseIntermediate
+                case .advanced: ex.baseAdvanced
+                }
+                let w1 = max(1, base)
+                let w4 = max(w1, Int((Double(w1) * level.monthEndRatio).rounded()))
+                return PreviewRow(
+                    id: ex.id,
+                    label: ex.label,
+                    week1: formatAmount(w1, unit: ex.unit),
+                    week4: formatAmount(w4, unit: ex.unit)
+                )
+            }
+    }
+
+    private func formatAmount(_ n: Int, unit: ProgramUnit) -> String {
+        switch unit {
+        case .reps: return "\(n)"
+        case .sec: return "\(n) с"
+        case .min: return "\(n) мин"
+        case .km:
+            let km = Double(n) / 10.0
+            return String(format: "%.1f км", km)
+        }
+    }
+
+    private func toggleExercise(_ id: String) {
+        if selected.contains(id) {
+            selected.remove(id)
+            errorText = nil
+            return
+        }
+        if selected.count >= poolMax {
+            errorText = "Не больше \(poolMax) упражнений."
+            return
+        }
+        selected.insert(id)
+        errorText = nil
+    }
+
+    private func hydrate() {
+        guard let boot = appState.bootstrap else { return }
+        let target = currentMoscowTarget()
+        let vote = boot.programVotes[monthVoteKey(year: target.year, month: target.month)]
+        selected = Set((vote?.exerciseIds ?? []).filter { !$0.hasPrefix("u_") })
+        level = ProgramLevel(rawValue: vote?.level ?? "") ?? .beginner
+    }
+
+    private func save() async {
+        let target = currentMoscowTarget()
+        saving = true
+        errorText = nil
+        defer { saving = false }
+        do {
+            try await APIClient.shared.putProgramVote(.init(
+                targetYear: target.year,
+                targetMonth: target.month,
+                exerciseIds: Array(selected).sorted(),
+                level: level.rawValue,
+                startAmounts: [:],
+                dowOverrides: nil,
+                customExercises: nil
+            ))
+            await appState.refreshBootstrap()
+            dismiss()
+        } catch let e as APIClientError {
+            errorText = e.message
+        } catch {
+            errorText = error.localizedDescription
+        }
+    }
+}
+
+private struct IndividualProgramVoteSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
+    @State private var level: ProgramLevel = .beginner
+    @State private var customPool: [CustomProgramExercise] = []
+    @State private var selectedIds: Set<String> = []
+    @State private var dowSelection: [String: Set<String>] = [:]
+    @State private var newLabel = ""
+    @State private var newUnit: ProgramUnit = .reps
+    @State private var newB = "10"
+    @State private var newI = "14"
+    @State private var newA = "20"
+    @State private var newMonthEnd = "1.3"
+    @State private var saving = false
+    @State private var errorText: String?
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Свои упражнения") {
+                    if customPool.isEmpty {
+                        Text("Добавьте упражнение, чтобы настроить индивидуальный план.")
+                            .foregroundStyle(.secondary)
+                    }
+                    ForEach(customPool) { ex in
+                        Toggle(isOn: bindingPool(ex.id)) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(ex.label)
+                                Text(ex.unit.title)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .onDelete(perform: deleteCustom)
+                }
+
+                Section("Добавить упражнение") {
+                    TextField("Название", text: $newLabel)
+                    Picker("Единица", selection: $newUnit) {
+                        ForEach(ProgramUnit.allCases) { u in
+                            Text(u.title).tag(u)
+                        }
+                    }
+                    TextField("Начальный уровень", text: $newB)
+                        .keyboardType(.numberPad)
+                    TextField("Средний уровень", text: $newI)
+                        .keyboardType(.numberPad)
+                    TextField("Продвинутый уровень", text: $newA)
+                        .keyboardType(.numberPad)
+                    TextField("Множитель к концу месяца", text: $newMonthEnd)
+                        .keyboardType(.decimalPad)
+                    Button("Добавить в пул", action: addCustom)
+                }
+
+                Section("Уровень программы") {
+                    Picker("Уровень", selection: $level) {
+                        ForEach(ProgramLevel.allCases) { lv in
+                            Text(lv.title).tag(lv)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                if !selectedIds.isEmpty {
+                    ForEach(isoDow, id: \.self) { day in
+                        Section(dowTitles[day] ?? day) {
+                            ForEach(customPool.filter { selectedIds.contains($0.id) }) { ex in
+                                Toggle(isOn: bindingDow(day: day, exerciseId: ex.id)) {
+                                    Text(ex.label)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if let errorText {
+                    Section {
+                        Text(errorText)
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+            .navigationTitle("Индивидуальный")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Закрыть") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(saving ? "Сохранение..." : "Сохранить") {
+                        Task { await save() }
+                    }
+                    .disabled(saving || selectedIds.isEmpty)
+                }
+            }
+            .onAppear(perform: hydrate)
+        }
+    }
+
+    private func hydrate() {
+        guard let boot = appState.bootstrap else { return }
+        let target = currentMoscowTarget()
+        let vote = boot.programVotes[monthVoteKey(year: target.year, month: target.month)]
+        level = ProgramLevel(rawValue: vote?.level ?? "") ?? .beginner
+
+        var source: [CustomProgramExercise] = []
+        for (id, def) in boot.customExerciseLibrary {
+            source.append(CustomProgramExercise(
+                id: id,
+                label: def.label,
+                unit: ProgramUnit(rawValue: def.unit) ?? .reps,
+                beginner: Int(def.base?.beginner ?? 10),
+                intermediate: Int(def.base?.intermediate ?? 14),
+                advanced: Int(def.base?.advanced ?? 20),
+                monthEndMultiplier: def.monthEndMultiplier ?? 1.3
+            ))
+        }
+        customPool = source.sorted { $0.label.localizedCaseInsensitiveCompare($1.label) == .orderedAscending }
+        selectedIds = Set((vote?.exerciseIds ?? []).filter { $0.hasPrefix("u_") })
+
+        var dow: [String: Set<String>] = [:]
+        for day in isoDow {
+            let ids = vote?.dowOverrides?[day] ?? Array(selectedIds)
+            dow[day] = Set(ids.filter { selectedIds.contains($0) })
+        }
+        dowSelection = dow
+    }
+
+    private func addCustom() {
+        let label = newLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !label.isEmpty else {
+            errorText = "Введите название упражнения."
+            return
+        }
+        guard let b = Int(newB), let i = Int(newI), let a = Int(newA), b > 0, i > 0, a > 0 else {
+            errorText = "Объёмы по уровням должны быть больше нуля."
+            return
+        }
+        guard let mm = Double(newMonthEnd), mm >= 1 else {
+            errorText = "Множитель к концу месяца должен быть >= 1."
+            return
+        }
+        let item = CustomProgramExercise(
+            id: newCustomExerciseId(),
+            label: label,
+            unit: newUnit,
+            beginner: b,
+            intermediate: i,
+            advanced: a,
+            monthEndMultiplier: mm
+        )
+        customPool.append(item)
+        customPool.sort { $0.label.localizedCaseInsensitiveCompare($1.label) == .orderedAscending }
+        selectedIds.insert(item.id)
+        for day in isoDow {
+            var set = dowSelection[day] ?? []
+            set.insert(item.id)
+            dowSelection[day] = set
+        }
+        newLabel = ""
+        errorText = nil
+    }
+
+    private func deleteCustom(at offsets: IndexSet) {
+        for idx in offsets {
+            let id = customPool[idx].id
+            selectedIds.remove(id)
+            for day in isoDow {
+                dowSelection[day]?.remove(id)
+            }
+        }
+        customPool.remove(atOffsets: offsets)
+    }
+
+    private func bindingPool(_ id: String) -> Binding<Bool> {
+        Binding(
+            get: { selectedIds.contains(id) },
+            set: { enabled in
+                if enabled {
+                    selectedIds.insert(id)
+                    for day in isoDow {
+                        var set = dowSelection[day] ?? []
+                        set.insert(id)
+                        dowSelection[day] = set
+                    }
+                } else {
+                    selectedIds.remove(id)
+                    for day in isoDow {
+                        dowSelection[day]?.remove(id)
+                    }
+                }
+            }
+        )
+    }
+
+    private func bindingDow(day: String, exerciseId: String) -> Binding<Bool> {
+        Binding(
+            get: { dowSelection[day]?.contains(exerciseId) == true },
+            set: { enabled in
+                var set = dowSelection[day] ?? []
+                if enabled { set.insert(exerciseId) } else { set.remove(exerciseId) }
+                dowSelection[day] = set
+            }
+        )
+    }
+
+    private func save() async {
+        let target = currentMoscowTarget()
+        saving = true
+        errorText = nil
+        defer { saving = false }
+
+        let selectedCustom = customPool.filter { selectedIds.contains($0.id) }
+        guard !selectedCustom.isEmpty else {
+            errorText = "Выберите минимум одно упражнение."
+            return
+        }
+
+        do {
+            for ex in selectedCustom {
+                try await APIClient.shared.postCustomExercise(.init(
+                    id: ex.id,
+                    exercise: .init(
+                        label: ex.label,
+                        unit: ex.unit.rawValue,
+                        base: .init(
+                            beginner: Double(ex.beginner),
+                            intermediate: Double(ex.intermediate),
+                            advanced: Double(ex.advanced)
+                        ),
+                        monthEndMultiplier: ex.monthEndMultiplier
+                    )
+                ))
+            }
+
+            var dowPayload: [String: [String]] = [:]
+            let allSorted = selectedCustom.map(\.id).sorted()
+            for day in isoDow {
+                let set = dowSelection[day] ?? Set(allSorted)
+                let ids = Array(set.filter { selectedIds.contains($0) }).sorted()
+                if ids != allSorted { dowPayload[day] = ids }
+            }
+
+            var customPayload: [String: CustomExerciseDef] = [:]
+            for ex in selectedCustom {
+                customPayload[ex.id] = CustomExerciseDef(
+                    label: ex.label,
+                    unit: ex.unit.rawValue,
+                    base: .init(
+                        beginner: Double(ex.beginner),
+                        intermediate: Double(ex.intermediate),
+                        advanced: Double(ex.advanced)
+                    ),
+                    monthEndMultiplier: ex.monthEndMultiplier
+                )
+            }
+
+            try await APIClient.shared.putProgramVote(.init(
+                targetYear: target.year,
+                targetMonth: target.month,
+                exerciseIds: allSorted,
+                level: level.rawValue,
+                startAmounts: [:],
+                dowOverrides: dowPayload.isEmpty ? nil : dowPayload,
+                customExercises: customPayload
+            ))
+            await appState.refreshBootstrap()
+            dismiss()
+        } catch let e as APIClientError {
+            errorText = e.message
+        } catch {
+            errorText = error.localizedDescription
         }
     }
 }
