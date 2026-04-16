@@ -481,12 +481,7 @@ struct ProfileTabView: View {
                     trailing: nil,
                     showPremium: !(appState.bootstrap.map { vipActive($0.user.profile) } ?? false)
                 ) {
-                    let isVip = appState.bootstrap.map { vipActive($0.user.profile) } ?? false
-                    if isVip {
-                        activeSheet = .individualProgram
-                    } else {
-                        activeSheet = .exerciseHint("Доступно по подписке Премиум.")
-                    }
+                    activeSheet = .individualProgram
                 }
             }
             .background(
@@ -1509,10 +1504,7 @@ private struct CustomProgramExercise: Identifiable {
     var id: String
     var label: String
     var unit: ProgramUnit
-    var beginner: Int
-    var intermediate: Int
-    var advanced: Int
-    var monthEndMultiplier: Double
+    var amount: Int?
 }
 
 private let isoDow: [String] = ["1", "2", "3", "4", "5", "6", "7"]
@@ -1824,121 +1816,457 @@ private struct CurrentProgramVoteSheet: View {
 }
 
 private struct IndividualProgramVoteSheet: View {
+    private enum Step {
+        case pool
+        case preview
+    }
+
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appState: AppState
-    @State private var level: ProgramLevel = .beginner
+    @State private var step: Step = .pool
     @State private var customPool: [CustomProgramExercise] = []
     @State private var selectedIds: Set<String> = []
     @State private var dowSelection: [String: Set<String>] = [:]
     @State private var newLabel = ""
     @State private var newUnit: ProgramUnit = .reps
-    @State private var newB = "10"
-    @State private var newI = "14"
-    @State private var newA = "20"
-    @State private var newMonthEnd = "1.3"
+    @State private var newAmount = ""
+    @State private var newDow: String?
     @State private var saving = false
     @State private var errorText: String?
 
     var body: some View {
         NavigationStack {
-            List {
-                Section("Свои упражнения") {
-                    if customPool.isEmpty {
-                        Text("Добавьте упражнение, чтобы настроить индивидуальный план.")
-                            .foregroundStyle(.secondary)
-                    }
-                    ForEach(customPool) { ex in
-                        Toggle(isOn: bindingPool(ex.id)) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(ex.label)
-                                Text(ex.unit.title)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        if !isVip {
+                            premiumOnlyView
+                        } else if step == .pool {
+                            poolStepView
+                        } else {
+                            previewStepView
                         }
-                    }
-                    .onDelete(perform: deleteCustom)
-                }
 
-                Section("Добавить упражнение") {
-                    TextField("Название", text: $newLabel)
-                    Picker("Единица", selection: $newUnit) {
-                        ForEach(ProgramUnit.allCases) { u in
-                            Text(u.title).tag(u)
-                        }
-                    }
-                    TextField("Начальный уровень", text: $newB)
-                        .keyboardType(.numberPad)
-                    TextField("Средний уровень", text: $newI)
-                        .keyboardType(.numberPad)
-                    TextField("Продвинутый уровень", text: $newA)
-                        .keyboardType(.numberPad)
-                    TextField("Множитель к концу месяца", text: $newMonthEnd)
-                        .keyboardType(.decimalPad)
-                    Button("Добавить в пул", action: addCustom)
-                }
-
-                Section("Уровень программы") {
-                    Picker("Уровень", selection: $level) {
-                        ForEach(ProgramLevel.allCases) { lv in
-                            Text(lv.title).tag(lv)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                }
-
-                if !selectedIds.isEmpty {
-                    ForEach(isoDow, id: \.self) { day in
-                        Section(dowTitles[day] ?? day) {
-                            ForEach(customPool.filter { selectedIds.contains($0.id) }) { ex in
-                                Toggle(isOn: bindingDow(day: day, exerciseId: ex.id)) {
-                                    Text(ex.label)
-                                }
-                            }
+                        if let errorText {
+                            Text(errorText)
+                                .font(.footnote)
+                                .foregroundStyle(.red)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
                 }
+                .padding(16)
 
-                if let errorText {
-                    Section {
-                        Text(errorText)
-                            .foregroundStyle(.red)
-                    }
-                }
+                Divider()
+                footerButtons
+                    .padding(16)
             }
             .navigationTitle("Индивидуальный")
             .navigationBarTitleDisplayMode(.inline)
+            .background {
+                Color(uiColor: .systemGroupedBackground)
+                    .ignoresSafeArea()
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Закрыть") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(saving ? "Сохранение..." : "Сохранить") {
-                        Task { await save() }
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
                     }
-                    .disabled(saving || selectedIds.isEmpty)
                 }
             }
             .onAppear(perform: hydrate)
         }
     }
 
+    private var isVip: Bool {
+        guard let b = appState.bootstrap else { return false }
+        return vipActive(b.user.profile)
+    }
+
+    private var premiumOnlyView: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Индивидуальный план")
+                    .font(.title3.weight(.bold))
+                Text("Раздел доступен только с подпиской Премиум.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("С Премиум вы сможете собрать свой пул упражнений, разнести их по дням недели и сохранить персональный план месяца.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                Text("Откройте Премиум в профиле, чтобы активировать этот раздел.")
+                    .font(.footnote)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
+                    .fill(Color(uiColor: .secondarySystemGroupedBackground))
+            )
+        }
+    }
+
+    private var poolStepView: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Шаг 1: пул упражнений")
+                    .font(.title3.weight(.bold))
+                Text("Добавьте свои упражнения, укажите единицу, количество (по желанию) и день недели.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
+
+            VStack(spacing: 0) {
+                if customPool.isEmpty {
+                    Text("Добавьте хотя бы одно упражнение, чтобы продолжить.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, ProfileChrome.exerciseRowPaddingH)
+                        .padding(.vertical, 14)
+                } else {
+                    ForEach(Array(customPool.enumerated()), id: \.element.id) { idx, ex in
+                        if idx > 0 {
+                            Divider()
+                                .padding(.leading, ProfileChrome.exercisePlanDividerLeading)
+                        }
+                        HStack(alignment: .top, spacing: 10) {
+                            Button {
+                                togglePoolSelection(ex.id)
+                            } label: {
+                                Image(systemName: selectedIds.contains(ex.id) ? "checkmark.square.fill" : "square")
+                                    .font(.title3)
+                                    .foregroundStyle(selectedIds.contains(ex.id) ? Color.accentColor : .secondary)
+                                    .padding(.top, 2)
+                            }
+                            .buttonStyle(.plain)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(ex.label)
+                                    .font(.body.weight(.semibold))
+                                Text(exerciseMetaText(ex))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer(minLength: 0)
+                            Button {
+                                removeCustom(ex.id)
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.body)
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, ProfileChrome.exerciseRowPaddingH)
+                    }
+                }
+            }
+            .background(
+                RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
+                    .fill(Color(uiColor: .secondarySystemGroupedBackground))
+            )
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Добавить упражнение")
+                    .font(.headline)
+                    .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
+
+                VStack(spacing: 10) {
+                    formFieldShell {
+                        TextField("Название (например, Жим лежа)", text: $newLabel)
+                            .textInputAutocapitalization(.sentences)
+                    }
+
+                    Picker("Единица", selection: $newUnit) {
+                        ForEach(ProgramUnit.allCases) { u in
+                            Text(u.title).tag(u)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
+                    formFieldShell {
+                        TextField("Количество (необязательно)", text: $newAmount)
+                            .keyboardType(.numberPad)
+                    }
+
+                    HStack(spacing: 10) {
+                        Menu {
+                            ForEach(isoDow, id: \.self) { day in
+                                Button(dowTitles[day] ?? day) {
+                                    newDow = day
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "calendar")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(.secondary)
+                                Text(newDow.flatMap { dowTitles[$0] } ?? "День")
+                                    .font(.body.weight(.semibold))
+                                    .foregroundStyle(.primary)
+                                    .lineLimit(1)
+                                Spacer(minLength: 0)
+                                Image(systemName: "chevron.down")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.horizontal, 16)
+                            .frame(minHeight: ProfileChrome.profileBarFixedHeight, maxHeight: ProfileChrome.profileBarFixedHeight)
+                            .background(
+                                Capsule(style: .continuous)
+                                    .fill(Color(uiColor: .tertiarySystemGroupedBackground))
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .frame(maxWidth: .infinity)
+
+                        Button(action: addCustom) {
+                            Text("Добавить в пул")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity, minHeight: ProfileChrome.profileBarFixedHeight, maxHeight: ProfileChrome.profileBarFixedHeight)
+                                .background(
+                                    Capsule(style: .continuous)
+                                        .fill(Color(red: ProfileChrome.accentBlue.red, green: ProfileChrome.accentBlue.green, blue: ProfileChrome.accentBlue.blue))
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+                .padding()
+                .background(
+                    RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
+                        .fill(Color(uiColor: .secondarySystemGroupedBackground))
+                )
+            }
+        }
+    }
+
+    private var previewStepView: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Шаг 2: превью и сохранение")
+                    .font(.title3.weight(.bold))
+                Text("Календарь показывает дни с тренировками и нагрузку по количеству упражнений.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
+
+            if previewCalendarDays.isEmpty {
+                Text("В этом месяце пока нет активных дней — задайте день недели у упражнений на первом шаге.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
+            } else {
+                VStack(alignment: .leading, spacing: 10) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 7), spacing: 8) {
+                        ForEach(["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"], id: \.self) { w in
+                            Text(w)
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity)
+                        }
+
+                        ForEach(0 ..< previewLeading, id: \.self) { _ in
+                            Color.clear
+                                .frame(height: 56)
+                        }
+
+                        ForEach(previewCalendarDays) { day in
+                            previewDayCell(day)
+                        }
+                    }
+
+                    Text("• Точки под числом показывают, сколько упражнений запланировано в этот день.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 2)
+                }
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
+                        .fill(Color(uiColor: .secondarySystemGroupedBackground))
+                )
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var footerButtons: some View {
+        HStack(spacing: 10) {
+            if !isVip {
+                Spacer(minLength: 0)
+                Button("Понятно") { dismiss() }
+                    .buttonStyle(.borderedProminent)
+                Spacer(minLength: 0)
+            } else if step == .pool {
+                Spacer(minLength: 0)
+                Button("Далее: превью") {
+                    guard !selectedIds.isEmpty else {
+                        errorText = "Выберите хотя бы одно упражнение в пуле."
+                        return
+                    }
+                    errorText = nil
+                    step = .preview
+                }
+                .buttonStyle(.borderedProminent)
+            } else {
+                Button("Назад") {
+                    errorText = nil
+                    step = .pool
+                }
+                .buttonStyle(.bordered)
+                Spacer(minLength: 0)
+                Button(saving ? "Сохранение..." : "Сохранить программу") {
+                    Task { await save() }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(saving || selectedIds.isEmpty)
+            }
+        }
+    }
+
+    private struct PreviewDay: Identifiable {
+        var id: String
+        var day: Int
+        var exerciseCount: Int
+        var labels: [String]
+    }
+
+    private var selectedPool: [CustomProgramExercise] {
+        customPool.filter { selectedIds.contains($0.id) }
+    }
+
+    private func formFieldShell<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        content()
+            .font(.body)
+            .padding(.horizontal, 16)
+            .frame(minHeight: ProfileChrome.profileBarFixedHeight, maxHeight: ProfileChrome.profileBarFixedHeight)
+            .background(
+                Capsule()
+                    .fill(Color(uiColor: .tertiarySystemGroupedBackground))
+            )
+    }
+
+    private func assignedDow(for exerciseId: String) -> String? {
+        for day in isoDow {
+            if dowSelection[day]?.contains(exerciseId) == true {
+                return day
+            }
+        }
+        return nil
+    }
+
+    private func assignDay(_ day: String, for exerciseId: String) {
+        for key in isoDow {
+            var set = dowSelection[key] ?? []
+            set.remove(exerciseId)
+            if key == day {
+                set.insert(exerciseId)
+            }
+            dowSelection[key] = set
+        }
+    }
+
+    private func exerciseMetaText(_ ex: CustomProgramExercise) -> String {
+        let day = assignedDow(for: ex.id).flatMap { dowTitles[$0] } ?? "день не выбран"
+        let amountText: String
+        if let amount = ex.amount, amount > 0 {
+            amountText = "\(amount) \(ex.unit.title.lowercased())"
+        } else {
+            amountText = "без количества"
+        }
+        return "\(amountText) · \(day)"
+    }
+
+    private var previewCalendarDays: [PreviewDay] {
+        let target = currentMoscowTarget()
+        let calendarId = monthVoteKey(year: target.year, month: target.month)
+        let monthDays = MoscowCalendar.daysInMonth(calendarId: calendarId)
+
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Europe/Moscow") ?? .current
+
+        var rows: [PreviewDay] = []
+        for day in 1 ... monthDays {
+            var comp = DateComponents()
+            comp.year = target.year
+            comp.month = target.month
+            comp.day = day
+            guard let date = cal.date(from: comp) else { continue }
+            let swiftWeekday = cal.component(.weekday, from: date)
+            let isoDay = String(swiftWeekday == 1 ? 7 : swiftWeekday - 1)
+            let ids = (dowSelection[isoDay] ?? []).filter { selectedIds.contains($0) }
+            if ids.isEmpty { continue }
+            let names = selectedPool
+                .filter { ids.contains($0.id) }
+                .map(\.label)
+                .sorted()
+            rows.append(.init(
+                id: "\(target.year)-\(target.month)-\(day)",
+                day: day,
+                exerciseCount: ids.count,
+                labels: names
+            ))
+        }
+        return rows
+    }
+
+    private var previewLeading: Int {
+        let target = currentMoscowTarget()
+        let calendarId = monthVoteKey(year: target.year, month: target.month)
+        return max(0, MoscowCalendar.firstWeekdayMonday1Sunday7(calendarId: calendarId) - 1)
+    }
+
+    private func previewDayCell(_ day: PreviewDay) -> some View {
+        VStack(spacing: 6) {
+            Text("\(day.day)")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.primary)
+            HStack(spacing: 3) {
+                ForEach(0 ..< min(day.exerciseCount, 4), id: \.self) { _ in
+                    Circle()
+                        .fill(Color(red: ProfileChrome.accentBlue.red, green: ProfileChrome.accentBlue.green, blue: ProfileChrome.accentBlue.blue))
+                        .frame(width: 5, height: 5)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 56)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(uiColor: .tertiarySystemGroupedBackground))
+        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("День \(day.day)")
+        .accessibilityValue("\(day.exerciseCount) упражнений: \(day.labels.joined(separator: ", "))")
+    }
+
     private func hydrate() {
         guard let boot = appState.bootstrap else { return }
         let target = currentMoscowTarget()
         let vote = boot.programVotes[monthVoteKey(year: target.year, month: target.month)]
-        level = ProgramLevel(rawValue: vote?.level ?? "") ?? .beginner
 
         var source: [CustomProgramExercise] = []
         for (id, def) in boot.customExerciseLibrary {
+            let amount = vote?.startAmounts?[id]
             source.append(CustomProgramExercise(
                 id: id,
                 label: def.label,
                 unit: ProgramUnit(rawValue: def.unit) ?? .reps,
-                beginner: Int(def.base?.beginner ?? 10),
-                intermediate: Int(def.base?.intermediate ?? 14),
-                advanced: Int(def.base?.advanced ?? 20),
-                monthEndMultiplier: def.monthEndMultiplier ?? 1.3
+                amount: amount
             ))
         }
         customPool = source.sorted { $0.label.localizedCaseInsensitiveCompare($1.label) == .orderedAscending }
@@ -1958,76 +2286,55 @@ private struct IndividualProgramVoteSheet: View {
             errorText = "Введите название упражнения."
             return
         }
-        guard let b = Int(newB), let i = Int(newI), let a = Int(newA), b > 0, i > 0, a > 0 else {
-            errorText = "Объёмы по уровням должны быть больше нуля."
+        let trimmedAmount = newAmount.trimmingCharacters(in: .whitespacesAndNewlines)
+        let amount: Int? = trimmedAmount.isEmpty ? nil : Int(trimmedAmount)
+        if trimmedAmount.isEmpty == false, amount == nil || amount == 0 {
+            errorText = "Количество должно быть больше нуля, либо оставьте поле пустым."
             return
         }
-        guard let mm = Double(newMonthEnd), mm >= 1 else {
-            errorText = "Множитель к концу месяца должен быть >= 1."
+
+        guard let selectedDow = newDow else {
+            errorText = "Выберите день недели."
             return
         }
+
         let item = CustomProgramExercise(
             id: newCustomExerciseId(),
             label: label,
             unit: newUnit,
-            beginner: b,
-            intermediate: i,
-            advanced: a,
-            monthEndMultiplier: mm
+            amount: amount
         )
         customPool.append(item)
         customPool.sort { $0.label.localizedCaseInsensitiveCompare($1.label) == .orderedAscending }
         selectedIds.insert(item.id)
-        for day in isoDow {
-            var set = dowSelection[day] ?? []
-            set.insert(item.id)
-            dowSelection[day] = set
-        }
+        assignDay(selectedDow, for: item.id)
         newLabel = ""
+        newAmount = ""
+        newDow = nil
         errorText = nil
     }
 
-    private func deleteCustom(at offsets: IndexSet) {
-        for idx in offsets {
-            let id = customPool[idx].id
+    private func removeCustom(_ id: String) {
+        selectedIds.remove(id)
+        for day in isoDow {
+            dowSelection[day]?.remove(id)
+        }
+        customPool.removeAll { $0.id == id }
+    }
+
+    private func togglePoolSelection(_ id: String) {
+        if selectedIds.contains(id) {
             selectedIds.remove(id)
             for day in isoDow {
                 dowSelection[day]?.remove(id)
             }
+        } else {
+            selectedIds.insert(id)
+            if assignedDow(for: id) == nil {
+                assignDay("1", for: id)
+            }
         }
-        customPool.remove(atOffsets: offsets)
-    }
-
-    private func bindingPool(_ id: String) -> Binding<Bool> {
-        Binding(
-            get: { selectedIds.contains(id) },
-            set: { enabled in
-                if enabled {
-                    selectedIds.insert(id)
-                    for day in isoDow {
-                        var set = dowSelection[day] ?? []
-                        set.insert(id)
-                        dowSelection[day] = set
-                    }
-                } else {
-                    selectedIds.remove(id)
-                    for day in isoDow {
-                        dowSelection[day]?.remove(id)
-                    }
-                }
-            }
-        )
-    }
-
-    private func bindingDow(day: String, exerciseId: String) -> Binding<Bool> {
-        Binding(
-            get: { dowSelection[day]?.contains(exerciseId) == true },
-            set: { enabled in
-                var set = dowSelection[day] ?? []
-                if enabled { set.insert(exerciseId) } else { set.remove(exerciseId) }
-                dowSelection[day] = set
-            }
-        )
+        errorText = nil
     }
 
     private func save() async {
@@ -2036,7 +2343,7 @@ private struct IndividualProgramVoteSheet: View {
         errorText = nil
         defer { saving = false }
 
-        let selectedCustom = customPool.filter { selectedIds.contains($0.id) }
+        let selectedCustom = selectedPool
         guard !selectedCustom.isEmpty else {
             errorText = "Выберите минимум одно упражнение."
             return
@@ -2049,44 +2356,42 @@ private struct IndividualProgramVoteSheet: View {
                     exercise: .init(
                         label: ex.label,
                         unit: ex.unit.rawValue,
-                        base: .init(
-                            beginner: Double(ex.beginner),
-                            intermediate: Double(ex.intermediate),
-                            advanced: Double(ex.advanced)
-                        ),
-                        monthEndMultiplier: ex.monthEndMultiplier
+                        base: nil,
+                        monthEndMultiplier: nil
                     )
                 ))
             }
 
-            var dowPayload: [String: [String]] = [:]
             let allSorted = selectedCustom.map(\.id).sorted()
+            let allSet = Set(allSorted)
+            var dowPayload: [String: [String]] = [:]
             for day in isoDow {
-                let set = dowSelection[day] ?? Set(allSorted)
-                let ids = Array(set.filter { selectedIds.contains($0) }).sorted()
-                if ids != allSorted { dowPayload[day] = ids }
+                let ids = Array((dowSelection[day] ?? allSet).filter { allSet.contains($0) }).sorted()
+                if ids != allSorted {
+                    dowPayload[day] = ids
+                }
             }
 
             var customPayload: [String: CustomExerciseDef] = [:]
+            var startAmounts: [String: Int] = [:]
             for ex in selectedCustom {
                 customPayload[ex.id] = CustomExerciseDef(
                     label: ex.label,
                     unit: ex.unit.rawValue,
-                    base: .init(
-                        beginner: Double(ex.beginner),
-                        intermediate: Double(ex.intermediate),
-                        advanced: Double(ex.advanced)
-                    ),
-                    monthEndMultiplier: ex.monthEndMultiplier
+                    base: nil,
+                    monthEndMultiplier: nil
                 )
+                if let amount = ex.amount, amount > 0 {
+                    startAmounts[ex.id] = amount
+                }
             }
 
             try await APIClient.shared.putProgramVote(.init(
                 targetYear: target.year,
                 targetMonth: target.month,
                 exerciseIds: allSorted,
-                level: level.rawValue,
-                startAmounts: [:],
+                level: ProgramLevel.beginner.rawValue,
+                startAmounts: startAmounts.isEmpty ? nil : startAmounts,
                 dowOverrides: dowPayload.isEmpty ? nil : dowPayload,
                 customExercises: customPayload
             ))
