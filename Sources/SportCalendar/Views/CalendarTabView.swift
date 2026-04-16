@@ -406,11 +406,19 @@ struct CalendarTabView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                let calId = calendarIdForTitle
-                let dayEntry = appState.bootstrap?.progress[calId]?.days[String(day)]
-                let done = dayEntry?.done == true
-                let template = planRows(day: day, calendarId: calId, mode: .template)
-                let individual = planRows(day: day, calendarId: calId, mode: .individual)
+                    let calId = calendarIdForTitle
+                    let dayEntry = appState.bootstrap?.progress[calId]?.days[String(day)]
+                    let done = dayEntry?.done == true
+                    let template = planRows(day: day, calendarId: calId, mode: .template)
+                    let individual = planRows(day: day, calendarId: calId, mode: .individual)
+                    let hasExistingProof = dayEntry?.proofUrl?.isEmpty == false
+                    let hasPickedProof = dayPickedProofData != nil
+                    let hasProof = !dayRemoveProof && (hasPickedProof || hasExistingProof)
+                    let primaryColor = Color(
+                        red: ProfileChrome.primary.red,
+                        green: ProfileChrome.primary.green,
+                        blue: ProfileChrome.primary.blue
+                    )
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text(daySheetTitle(day: day, calendarId: calId))
@@ -427,96 +435,89 @@ struct CalendarTabView: View {
                     )
 
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("Отчёт  необязательно")
-                            .font(.subheadline.weight(.semibold))
-                            .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
-                        VStack(alignment: .leading, spacing: 10) {
-                            PhotosPicker(selection: $dayProofPickerItem, matching: .images) {
-                                HStack(spacing: 10) {
-                                    Image(systemName: "camera.fill")
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundStyle(.secondary)
-                                    Text((dayPickedProofData != nil || dayEntry?.proofUrl?.isEmpty == false) ? "Заменить фото" : "Загрузите фото")
-                                        .font(.body.weight(.semibold))
-                                        .foregroundStyle(.primary)
-                                    Spacer(minLength: 0)
-                                }
-                                .padding(.horizontal, 16)
-                                .frame(minHeight: ProfileChrome.profileBarFixedHeight, maxHeight: ProfileChrome.profileBarFixedHeight)
-                                .background(
-                                    Capsule(style: .continuous)
-                                        .fill(Color(uiColor: .tertiarySystemGroupedBackground))
-                                )
+                        daySectionTitle("Отчёт", optional: true)
+                        PhotosPicker(selection: $dayProofPickerItem, matching: .images) {
+                            HStack(spacing: 10) {
+                                Image(systemName: "camera.fill")
+                                    .font(.system(size: 14, weight: .semibold))
+                                Text(hasProof ? "Заменить фото" : "Загрузите фото")
+                                    .font(.body.weight(.semibold))
+                                Spacer(minLength: 0)
                             }
-                            .buttonStyle(.plain)
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 16)
                             .frame(maxWidth: .infinity)
+                            .frame(minHeight: ProfileChrome.profileBarFixedHeight, maxHeight: ProfileChrome.profileBarFixedHeight)
+                            .background(
+                                Capsule(style: .continuous)
+                                    .fill(primaryColor)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .frame(maxWidth: .infinity)
 
-                            if let picked = dayPickedProofPreview {
-                                picked
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(height: 160)
-                                    .frame(maxWidth: .infinity)
-                                    .clipShape(RoundedRectangle(cornerRadius: ProfileChrome.radiusLg, style: .continuous))
-                            } else if let s = dayEntry?.proofUrl, let u = URL(string: s) {
-                                AsyncImage(url: u) { phase in
-                                    switch phase {
-                                    case .success(let img):
-                                        img.resizable().scaledToFill()
-                                    case .failure:
-                                        Color(uiColor: .tertiarySystemGroupedBackground)
-                                    case .empty:
-                                        ProgressView()
-                                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                            .background(Color(uiColor: .tertiarySystemGroupedBackground))
-                                    @unknown default:
-                                        Color(uiColor: .tertiarySystemGroupedBackground)
-                                    }
-                                }
+                        if let picked = dayPickedProofPreview {
+                            picked
+                                .resizable()
+                                .scaledToFill()
                                 .frame(height: 160)
                                 .frame(maxWidth: .infinity)
                                 .clipShape(RoundedRectangle(cornerRadius: ProfileChrome.radiusLg, style: .continuous))
-                            }
-
-                            if dayPickedProofData != nil || dayEntry?.proofUrl?.isEmpty == false {
-                                Button {
-                                    dayPickedProofData = nil
-                                    dayPickedProofPreview = nil
-                                    dayRemoveProof = true
-                                } label: {
-                                    Text("Удалить отчёт")
-                                        .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(.red)
+                        } else if let s = dayEntry?.proofUrl, let u = URL(string: s), !dayRemoveProof {
+                            AsyncImage(url: u) { phase in
+                                switch phase {
+                                case .success(let img):
+                                    img.resizable().scaledToFill()
+                                case .failure:
+                                    Color(uiColor: .tertiarySystemGroupedBackground)
+                                case .empty:
+                                    ProgressView()
+                                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                        .background(Color(uiColor: .tertiarySystemGroupedBackground))
+                                @unknown default:
+                                    Color(uiColor: .tertiarySystemGroupedBackground)
                                 }
-                                .buttonStyle(.plain)
                             }
+                            .frame(height: 160)
+                            .frame(maxWidth: .infinity)
+                            .clipShape(RoundedRectangle(cornerRadius: ProfileChrome.radiusLg, style: .continuous))
                         }
-                        .padding(12)
-                        .background(
-                            RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
-                                .fill(Color(uiColor: .secondarySystemGroupedBackground))
-                        )
+
+                        if hasPickedProof || hasExistingProof {
+                            Button {
+                                dayPickedProofData = nil
+                                dayPickedProofPreview = nil
+                                dayRemoveProof = true
+                                dayProofCaption = ""
+                            } label: {
+                                Text("Удалить фото")
+                                    .font(.body.weight(.semibold))
+                                    .frame(maxWidth: .infinity)
+                                    .frame(minHeight: ProfileChrome.profileBarFixedHeight, maxHeight: ProfileChrome.profileBarFixedHeight)
+                                    .background(
+                                        Capsule(style: .continuous)
+                                            .fill(ProfileChrome.groupedContentSurface)
+                                    )
+                                    .foregroundStyle(.red)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
 
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("Комментарий")
-                            .font(.subheadline.weight(.semibold))
-                            .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
-                        VStack(alignment: .leading, spacing: 10) {
-                            TextField("Подпись к фото", text: $dayProofCaption)
-                                .textInputAutocapitalization(.sentences)
-                                .padding(.horizontal, 16)
-                                .frame(minHeight: ProfileChrome.profileBarFixedHeight, maxHeight: ProfileChrome.profileBarFixedHeight)
-                                .background(
-                                    Capsule(style: .continuous)
-                                        .fill(Color(uiColor: .tertiarySystemGroupedBackground))
-                                )
-                        }
-                        .padding(12)
-                        .background(
-                            RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
-                                .fill(Color(uiColor: .secondarySystemGroupedBackground))
-                        )
+                        daySectionTitle("Комментарий", optional: true)
+                        TextField("Подпись к фото", text: $dayProofCaption)
+                            .textFieldStyle(.plain)
+                            .textInputAutocapitalization(.sentences)
+                            .padding(.horizontal, 16)
+                            .frame(maxWidth: .infinity)
+                            .frame(minHeight: ProfileChrome.profileBarFixedHeight, maxHeight: ProfileChrome.profileBarFixedHeight)
+                            .background(
+                                Capsule(style: .continuous)
+                                    .fill(ProfileChrome.groupedContentSurface)
+                            )
+                            .disabled(!hasProof)
+                            .opacity(hasProof ? 1 : 0.55)
                     }
 
                     Button {
@@ -682,6 +683,19 @@ struct CalendarTabView: View {
         } catch {
             banner = error.localizedDescription
         }
+    }
+
+    private func daySectionTitle(_ title: String, optional: Bool) -> some View {
+        HStack(spacing: 6) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+            if optional {
+                Text("необязательно")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
     }
 
     private func daySheetTitle(day: Int, calendarId: String) -> String {
