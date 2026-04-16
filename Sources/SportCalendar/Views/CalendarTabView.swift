@@ -502,14 +502,16 @@ struct CalendarTabView: View {
                         Text("Комментарий")
                             .font(.subheadline.weight(.semibold))
                             .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
-                        TextField("Подпись к фото", text: $dayProofCaption)
-                            .textInputAutocapitalization(.sentences)
-                            .padding(.horizontal, 16)
-                            .frame(minHeight: ProfileChrome.profileBarFixedHeight, maxHeight: ProfileChrome.profileBarFixedHeight)
-                            .background(
-                                Capsule(style: .continuous)
-                                    .fill(Color(uiColor: .tertiarySystemGroupedBackground))
-                            )
+                        VStack(alignment: .leading, spacing: 10) {
+                            TextField("Подпись к фото", text: $dayProofCaption)
+                                .textInputAutocapitalization(.sentences)
+                                .padding(.horizontal, 16)
+                                .frame(minHeight: ProfileChrome.profileBarFixedHeight, maxHeight: ProfileChrome.profileBarFixedHeight)
+                                .background(
+                                    Capsule(style: .continuous)
+                                        .fill(Color(uiColor: .tertiarySystemGroupedBackground))
+                                )
+                        }
                         .padding(12)
                         .background(
                             RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
@@ -706,7 +708,9 @@ struct CalendarTabView: View {
                 isOpen: $dayOpenTemplate,
                 gate: template.gate
             )
-            Divider().padding(.leading, ProfileChrome.exerciseRowPaddingH)
+            Divider()
+                .padding(.leading, ProfileChrome.exerciseRowPaddingH)
+                .padding(.trailing, ProfileChrome.exerciseRowPaddingH)
             dayPlanSection(
                 title: "Индивидуальный",
                 icon: "person",
@@ -717,7 +721,7 @@ struct CalendarTabView: View {
                 gate: individual.gate
             )
         }
-        .padding()
+        .padding(.vertical, 12)
         .background(
             RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
                 .fill(Color(uiColor: .secondarySystemGroupedBackground))
@@ -753,6 +757,8 @@ struct CalendarTabView: View {
                         .foregroundStyle(.secondary)
                         .rotationEffect(.degrees(isOpen.wrappedValue ? 180 : 0))
                 }
+                .padding(.horizontal, ProfileChrome.exerciseRowPaddingH)
+                .padding(.vertical, 10)
             }
             .buttonStyle(.plain)
 
@@ -762,17 +768,21 @@ struct CalendarTabView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .padding(.top, 4)
-                        .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
+                        .padding(.leading, ProfileChrome.exercisePlanDividerLeading)
                 } else if rows.isEmpty {
                     Text("В этот день нет упражнений.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .padding(.top, 4)
-                        .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
+                        .padding(.leading, ProfileChrome.exercisePlanDividerLeading)
                 } else {
                     VStack(spacing: 0) {
                         ForEach(Array(rows.enumerated()), id: \.element.id) { idx, row in
-                            if idx > 0 { Divider().padding(.leading, ProfileChrome.exercisePlanDividerLeading) }
+                            if idx > 0 {
+                                Divider()
+                                    .padding(.leading, ProfileChrome.exercisePlanDividerLeading)
+                                    .padding(.trailing, ProfileChrome.exerciseRowPaddingH)
+                            }
                             Button {
                                 guard checks.wrappedValue.indices.contains(idx) else { return }
                                 checks.wrappedValue[idx].toggle()
