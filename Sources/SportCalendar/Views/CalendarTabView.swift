@@ -375,21 +375,29 @@ struct CalendarTabView: View {
             Button {
                 showWordsGame = true
             } label: {
-                HStack {
+                HStack(spacing: 8) {
                     Image(systemName: "book.fill")
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Слова")
-                            .font(.body.weight(.semibold))
-                        Text("5 букв")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
+                        .symbolRenderingMode(.monochrome)
+                        .foregroundColor(
+                            Color(
+                                red: ProfileChrome.accentBlue.red,
+                                green: ProfileChrome.accentBlue.green,
+                                blue: ProfileChrome.accentBlue.blue
+                            )
+                        )
+                        .frame(width: ProfileChrome.exerciseRowIconColumnWidth, alignment: .center)
+                    Text("Слова")
+                        .font(.headline)
+                    Spacer(minLength: 0)
+                    Text("5 букв")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
                     Image(systemName: "chevron.right")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.secondary)
                 }
-                .padding()
+                .padding(.horizontal, ProfileChrome.exerciseRowPaddingH)
+                .padding(.vertical, 12)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
                     RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
