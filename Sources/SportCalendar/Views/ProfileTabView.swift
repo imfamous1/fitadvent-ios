@@ -1851,7 +1851,9 @@ private struct IndividualProgramVoteSheet: View {
                             Text(errorText)
                                 .font(.footnote)
                                 .foregroundStyle(.red)
+                                .multilineTextAlignment(.leading)
                                 .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
                         }
                     }
                 }
