@@ -1917,7 +1917,7 @@ private struct IndividualProgramVoteSheet: View {
     private var poolStepView: some View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Шаг 1: пул упражнений")
+                Text("Пул упражнений")
                     .font(.title3.weight(.bold))
                 Text("Добавьте свои упражнения, укажите единицу, количество (по желанию) и день недели.")
                     .font(.subheadline)
@@ -2057,7 +2057,7 @@ private struct IndividualProgramVoteSheet: View {
     private var previewStepView: some View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Шаг 2: превью и сохранение")
+                Text("Превью")
                     .font(.title3.weight(.bold))
                 Text("Календарь показывает дни с тренировками и нагрузку по количеству упражнений.")
                     .font(.subheadline)
@@ -2065,42 +2065,42 @@ private struct IndividualProgramVoteSheet: View {
             }
             .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
 
-            if previewCalendarDays.isEmpty {
-                Text("В этом месяце пока нет активных дней — задайте день недели у упражнений на первом шаге.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
-            } else {
-                VStack(alignment: .leading, spacing: 10) {
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 7), spacing: 8) {
-                        ForEach(["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"], id: \.self) { w in
-                            Text(w)
-                                .font(.caption2.weight(.bold))
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity)
-                        }
-
-                        ForEach(0 ..< previewLeading, id: \.self) { _ in
-                            Color.clear
-                                .frame(height: 56)
-                        }
-
-                        ForEach(previewCalendarDays) { day in
-                            previewDayCell(day)
-                        }
+            VStack(alignment: .leading, spacing: 10) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 7), spacing: 8) {
+                    ForEach(["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"], id: \.self) { w in
+                        Text(w)
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
                     }
 
-                    Text("• Точки под числом показывают, сколько упражнений запланировано в этот день.")
-                        .font(.caption)
+                    ForEach(0 ..< previewLeading, id: \.self) { _ in
+                        Color.clear
+                            .frame(height: 56)
+                    }
+
+                    ForEach(previewCalendarDays) { day in
+                        previewDayCell(day)
+                    }
+                }
+
+                if !hasActivePreviewDays {
+                    Text("В этом месяце пока нет активных дней — задайте день недели у упражнений на первом шаге.")
+                        .font(.footnote)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 2)
                 }
-                .padding(12)
-                .background(
-                    RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
-                        .fill(Color(uiColor: .secondarySystemGroupedBackground))
-                )
+
+                Text("• Точки под числом показывают, сколько упражнений запланировано в этот день.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 2)
             }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
+                    .fill(Color(uiColor: .secondarySystemGroupedBackground))
+            )
         }
     }
 
@@ -2114,7 +2114,7 @@ private struct IndividualProgramVoteSheet: View {
                 Spacer(minLength: 0)
             } else if step == .pool {
                 Spacer(minLength: 0)
-                Button("Далее: превью") {
+                Button("Далее") {
                     guard !selectedIds.isEmpty else {
                         errorText = "Выберите хотя бы одно упражнение в пуле."
                         return
@@ -2130,7 +2130,7 @@ private struct IndividualProgramVoteSheet: View {
                 }
                 .buttonStyle(.bordered)
                 Spacer(minLength: 0)
-                Button(saving ? "Сохранение..." : "Сохранить программу") {
+                Button(saving ? "Сохранение..." : "Сохранить выбор") {
                     Task { await save() }
                 }
                 .buttonStyle(.borderedProminent)
@@ -2192,6 +2192,10 @@ private struct IndividualProgramVoteSheet: View {
         return "\(amountText) · \(day)"
     }
 
+    private var hasActivePreviewDays: Bool {
+        previewCalendarDays.contains { $0.exerciseCount > 0 }
+    }
+
     private var previewCalendarDays: [PreviewDay] {
         let target = currentMoscowTarget()
         let calendarId = monthVoteKey(year: target.year, month: target.month)
@@ -2210,7 +2214,6 @@ private struct IndividualProgramVoteSheet: View {
             let swiftWeekday = cal.component(.weekday, from: date)
             let isoDay = String(swiftWeekday == 1 ? 7 : swiftWeekday - 1)
             let ids = (dowSelection[isoDay] ?? []).filter { selectedIds.contains($0) }
-            if ids.isEmpty { continue }
             let names = selectedPool
                 .filter { ids.contains($0.id) }
                 .map(\.label)
