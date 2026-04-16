@@ -1329,56 +1329,256 @@ private struct ProfileEditSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                if let banner = errorBanner {
-                    Section { Text(banner).foregroundStyle(.red) }
-                }
-                Section("Имя") {
-                    TextField("Отображаемое имя", text: $displayName)
-                }
-                Section("Антропометрия") {
-                    TextField("Рост, см", text: $heightCm)
-                    #if os(iOS)
-                        .keyboardType(.numberPad)
-                    #endif
-                    TextField("Вес, кг", text: $weightKg)
-                    #if os(iOS)
-                        .keyboardType(.decimalPad)
-                    #endif
-                    TextField("Возраст, лет", text: $ageYears)
-                    #if os(iOS)
-                        .keyboardType(.numberPad)
-                    #endif
-                    TextField("Пол (male / female или пусто)", text: $sex)
-                }
-                Section("Цель по калориям") {
-                    TextField("Ккал в день (0 — не задано)", text: $dailyKcal)
-                    #if os(iOS)
-                        .keyboardType(.numberPad)
-                    #endif
-                }
-                Section("Приватность") {
-                    Toggle("Делиться параметрами тела", isOn: $shareBody)
-                    Toggle("Крупные доказательства", isOn: $shareProofs)
-                    Toggle("Показывать в списке сообщества", isOn: $showInCommunity)
-                }
-                Section {
-                    Button(saving ? "Сохранение…" : "Сохранить") {
-                        Task { await save() }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    if let banner = errorBanner {
+                        Text(banner)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Color(red: ProfileChrome.error.red, green: ProfileChrome.error.green, blue: ProfileChrome.error.blue))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
+                                    .fill(Color(uiColor: .secondarySystemGroupedBackground))
+                            )
                     }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        sectionHeader("Имя")
+                        card {
+                            TextField("Отображаемое имя", text: $displayName)
+                                .textInputAutocapitalization(.words)
+                                .autocorrectionDisabled(true)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        sectionHeader("Пол")
+                        Picker("Пол", selection: $sex) {
+                            Text("Не указан").tag("")
+                            Text("Мужской").tag("male")
+                            Text("Женский").tag("female")
+                        }
+                        .pickerStyle(.segmented)
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        sectionHeader("Антропометрия")
+                        card {
+                            VStack(spacing: 0) {
+                                iconFieldRow(systemImage: "ruler", placeholder: "Рост, см", text: $heightCm, keyboard: .numberPad)
+                                inputOnlyDivider
+                                iconFieldRow(systemImage: "scalemass", placeholder: "Вес, кг", text: $weightKg, keyboard: .decimalPad)
+                                inputOnlyDivider
+                                iconFieldRow(systemImage: "calendar", placeholder: "Возраст, лет", text: $ageYears, keyboard: .numberPad)
+                            }
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        sectionHeader("Цель по калориям")
+                        card {
+                            TextField("не задана", text: $dailyKcal)
+                                    #if os(iOS)
+                                        .keyboardType(.numberPad)
+                                    #endif
+                        }
+                        if let recommendedKcal {
+                            Text("Рекомендуемо по Mifflin–St Jeor: ~\(recommendedKcal) ккал/день.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
+                        } else {
+                            Text("Укажите рост и вес, возраст можно оставить пустым.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        sectionHeader("Сообщество")
+                        card {
+                            VStack(spacing: 0) {
+                                toggleRow("Показывать мой профиль в общем списке", isOn: $showInCommunity)
+                                divider
+                                toggleRow(
+                                    "Показывать рост и вес всем",
+                                    isOn: $shareBody,
+                                    disabled: !showInCommunity
+                                )
+                                divider
+                                toggleRow(
+                                    "Разрешить открывать фото в полном размере",
+                                    isOn: $shareProofs,
+                                    disabled: !showInCommunity
+                                )
+                            }
+                        }
+                    }
+
+                    Button {
+                        Task { await save() }
+                    } label: {
+                        Label(saving ? "Сохранение…" : "Сохранить", systemImage: "checkmark.circle.fill")
+                            .font(.body.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: ProfileChrome.profileBarFixedHeight)
+                            .background(
+                                Capsule()
+                                    .fill(Color(uiColor: .secondarySystemGroupedBackground))
+                            )
+                            .foregroundStyle(Color(
+                                red: ProfileChrome.accentBlue.red,
+                                green: ProfileChrome.accentBlue.green,
+                                blue: ProfileChrome.accentBlue.blue
+                            ))
+                    }
+                    .buttonStyle(.plain)
                     .disabled(saving)
+                    .opacity(saving ? 0.7 : 1)
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
             }
+            .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("Анкета")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Закрыть") { dismiss() }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(Color.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Закрыть")
                 }
             }
             .onAppear { hydrate() }
             .onChange(of: appState.bootstrap?.user.profile.displayName) { _, _ in hydrate() }
+            .onChange(of: heightCm) { _, _ in sanitizeKcalDependencyInput() }
+            .onChange(of: weightKg) { _, _ in sanitizeKcalDependencyInput() }
+            .onChange(of: ageYears) { _, _ in sanitizeKcalDependencyInput() }
+            .onChange(of: sex) { _, _ in sanitizeSexInput() }
+            .onChange(of: dailyKcal) { _, _ in sanitizeDailyKcalInput() }
+            .onChange(of: showInCommunity) { _, isOn in
+                if !isOn {
+                    shareBody = false
+                    shareProofs = false
+                }
+            }
         }
+    }
+
+    private var recommendedKcal: Int? {
+        var p = UserProfile()
+        p.heightCm = heightCm.trimmingCharacters(in: .whitespacesAndNewlines)
+        p.weightKg = weightKg.trimmingCharacters(in: .whitespacesAndNewlines)
+        p.ageYears = ageYears.trimmingCharacters(in: .whitespacesAndNewlines)
+        p.sex = sex.trimmingCharacters(in: .whitespacesAndNewlines)
+        return computeTdeeAndKcalNorms(p).norms.maintenance
+    }
+
+    @ViewBuilder
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.subheadline.weight(.semibold))
+            .padding(.leading, ProfileChrome.exerciseSectionTitleLeading)
+    }
+
+    @ViewBuilder
+    private func card<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        content()
+            .padding(.horizontal, ProfileChrome.exerciseRowPaddingH)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: ProfileChrome.radiusXl, style: .continuous)
+                    .fill(Color(uiColor: .secondarySystemGroupedBackground))
+            )
+    }
+
+    private var divider: some View {
+        Divider()
+            .padding(.leading, ProfileChrome.exerciseRowPaddingH)
+    }
+
+    private var inputOnlyDivider: some View {
+        Divider()
+            .padding(.leading, ProfileChrome.exerciseRowPaddingH + 14)
+    }
+
+    @ViewBuilder
+    private func fieldRow<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        content()
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private func iconFieldRow(systemImage: String, placeholder: String, text: Binding<String>, keyboard: UIKeyboardType) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 18, alignment: .center)
+            TextField(placeholder, text: text)
+#if os(iOS)
+                .keyboardType(keyboard)
+#endif
+        }
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private func toggleRow(_ title: String, isOn: Binding<Bool>, disabled: Bool = false) -> some View {
+        Toggle(isOn: isOn) {
+            Text(title)
+                .font(.subheadline)
+        }
+        .disabled(disabled)
+        .padding(.vertical, 8)
+        .opacity(disabled ? 0.55 : 1)
+    }
+
+    private func sanitizeKcalDependencyInput() {
+        heightCm = sanitizeDecimalInput(heightCm)
+        weightKg = sanitizeDecimalInput(weightKg)
+        ageYears = sanitizeIntegerInput(ageYears)
+    }
+
+    private func sanitizeDailyKcalInput() {
+        dailyKcal = sanitizeIntegerInput(dailyKcal)
+    }
+
+    private func sanitizeSexInput() {
+        let normalized = normalizeProfileSex(sex)
+        if normalized != sex { sex = normalized }
+    }
+
+    private func sanitizeIntegerInput(_ raw: String) -> String {
+        raw.filter { $0.isNumber }
+    }
+
+    private func sanitizeDecimalInput(_ raw: String) -> String {
+        var out = ""
+        var hasSeparator = false
+        for ch in raw {
+            if ch.isNumber {
+                out.append(ch)
+            } else if ch == "," || ch == "." {
+                if !hasSeparator {
+                    out.append(".")
+                    hasSeparator = true
+                }
+            }
+        }
+        return out
     }
 
     private func hydrate() {
@@ -1387,11 +1587,16 @@ private struct ProfileEditSheet: View {
         heightCm = p.heightCm ?? ""
         weightKg = p.weightKg ?? ""
         ageYears = p.ageYears ?? ""
-        sex = p.sex ?? ""
-        if let k = p.dailyKcalGoal { dailyKcal = k > 0 ? String(k) : "" }
+        sex = normalizeProfileSex(p.sex)
+        dailyKcal = ""
+        if let k = p.dailyKcalGoal, k > 0 { dailyKcal = String(k) }
         shareBody = p.shareBodyStats ?? false
         shareProofs = p.shareProofsLarge ?? false
         showInCommunity = p.showInCommunityList ?? true
+        if !showInCommunity {
+            shareBody = false
+            shareProofs = false
+        }
     }
 
     private func save() async {
@@ -1410,8 +1615,8 @@ private struct ProfileEditSheet: View {
                 weightKg: weightKg.isEmpty ? nil : weightKg,
                 ageYears: ageYears.isEmpty ? nil : ageYears,
                 sex: sex.isEmpty ? nil : sex,
-                shareBodyStats: shareBody,
-                shareProofsLarge: shareProofs,
+                shareBodyStats: showInCommunity && shareBody,
+                shareProofsLarge: showInCommunity && shareProofs,
                 showInCommunityList: showInCommunity,
                 dailyKcalGoal: kcalParsed
             ))
